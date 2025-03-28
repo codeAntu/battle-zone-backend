@@ -13,16 +13,19 @@ export async function findUserInDatabase(email: string) {
 export async function createUser(userData: {
   email: string;
   password: string;
+  validationCode: string;
+  verificationCodeExpires: Date;
 }) {
   console.log(userData);
 
   const newUser = await db
     .insert(usersTable)
     .values({
-      name: "",
       email: userData.email,
       password: userData.password,
       balance: 0,
+      verificationCode: "",
+      verificationCodeExpires: new Date(),
     })
     .$returningId();
 
