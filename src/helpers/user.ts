@@ -1,0 +1,36 @@
+import { eq } from "drizzle-orm";
+import db from "../config/db";
+import { usersTable } from "../drizzle/schema";
+
+export async function findUserInDatabase(email: string) {
+  const users = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
+  return users.length > 0 ? users[0] : null;
+}
+
+export async function createUser(userData: {
+  email: string;
+  password: string;
+}) {
+  console.log(userData);
+
+  const newUser = await db
+    .insert(usersTable)
+    .values({
+      name: "",
+      email: userData.email,
+      password: userData.password,
+      balance: 0,
+    })
+    .$returningId();
+
+  const userId = newUser[0].id;
+  const user = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+
+  return user[0];
+}

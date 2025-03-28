@@ -1,22 +1,28 @@
+import { sql } from "drizzle-orm";
+import { check } from "drizzle-orm/gel-core";
 import {
+  datetime,
   int,
   mysqlTable,
   serial,
-  varchar,
-  datetime,
-  boolean,
   timestamp,
+  varchar,
 } from "drizzle-orm/mysql-core";
 
-// Users table
-export const usersTable = mysqlTable("users", {
-  id: serial().primaryKey(),
-  name: varchar({ length: 255 }).notNull(),
-  email: varchar({ length: 255 }).notNull().unique(),
-  password: varchar({ length: 255 }).notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
-});
+// Users table with constraint
+export const usersTable = mysqlTable(
+  "users",
+  {
+    id: serial().primaryKey(),
+    name: varchar({ length: 255 }).default(""),
+    email: varchar({ length: 255 }).notNull().unique(),
+    password: varchar({ length: 255 }).notNull(),
+    balance: int().notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (table) => [check("balance is non-negative", sql`${table.balance} >= 0`)]
+);
 
 export const adminTable = mysqlTable("admin", {
   id: serial().primaryKey(),
