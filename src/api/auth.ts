@@ -254,6 +254,7 @@ auth.post("/login", zValidator("json", signupValidator), async (c) => {
   const tokenData = {
     id: user.id,
     email: user.email,
+    name: user.name // Add name to token data for better context
   };
 
   const authToken = jwt.sign(tokenData, process.env.JWT_SECRET!, {

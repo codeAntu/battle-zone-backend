@@ -7,6 +7,7 @@ import {
   serial,
   timestamp,
   varchar,
+  mysqlEnum,
 } from "drizzle-orm/mysql-core";
 
 // Users table with constraint
@@ -42,15 +43,16 @@ export const adminTable = mysqlTable("admin", {
 // Tournaments table
 export const tournamentsTable = mysqlTable("tournaments", {
   id: serial().primaryKey(),
-  game: varchar({ length: 255 }).notNull(),
+  game: mysqlEnum("game", ["PUBG", "FREEFIRE"]).notNull(),
   name: varchar({ length: 255 }).notNull(),
   description: varchar({ length: 255 }),
-  gameId: int().notNull(),
+  roomId: int().notNull(),
   entryFee: int().notNull(),
   prize: int().notNull(),
+  perKillPrize: int().notNull(),
   maxParticipants: int().notNull(),
-  startDate: datetime().notNull(),
-  endDate: datetime().notNull(),
+  date: datetime().notNull(),
+  time: datetime().notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });

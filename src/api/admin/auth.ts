@@ -173,7 +173,8 @@ adminAuth.post("/login", zValidator("json", signupValidator), async (c) => {
   const tokenData = {
     id: admin.id,
     email: admin.email,
-    isAdmin: true,
+    name: admin.name, // Add name to token data
+    isAdmin: true
   };
 
   const authToken = jwt.sign(tokenData, process.env.JWT_SECRET!, {
