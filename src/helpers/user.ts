@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import db from "../config/db";
-import { usersTable } from "../drizzle/schema";
+import { adminTable, usersTable } from "../drizzle/schema";
 
 export async function findUserInDatabase(email: string) {
   const users = await db
@@ -16,6 +16,14 @@ export async function findUserById(id: string) {
     .from(usersTable)
     .where(eq(usersTable.id, Number(id)));
   return users.length > 0 ? users[0] : null;
+}
+
+export async function checkEmailInAdminTable(email: string) {
+  const admin = await db
+    .select()
+    .from(adminTable)
+    .where(eq(adminTable.email, email));
+  return admin.length > 0;
 }
 
 export async function createUser(userData: {

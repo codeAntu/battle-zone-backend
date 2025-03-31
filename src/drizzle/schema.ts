@@ -31,8 +31,10 @@ export const adminTable = mysqlTable("admin", {
   id: serial().primaryKey(),
   name: varchar({ length: 255 }).notNull(),
   email: varchar({ length: 255 }).notNull().unique(),
-  verificationCodeExpires: datetime().notNull(),
   password: varchar({ length: 255 }).notNull(),
+  isVerified: int().notNull().default(0),
+  verificationCode: varchar({ length: 255 }).notNull(),
+  verificationCodeExpires: datetime().notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });

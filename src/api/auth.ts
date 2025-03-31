@@ -4,23 +4,39 @@ import { Hono } from "hono";
 import db from "../config/db";
 import { usersTable } from "../drizzle/schema";
 import { sendVerificationEmail } from "../helpers/email";
-import { findUserInDatabase } from "../helpers/user";
+import { findUserInDatabase, checkEmailInAdminTable } from "../helpers/user";
 import { signupValidator, verifyOtpValidator } from "../zod/auth";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-// Create a single auth router
 const auth = new Hono().basePath("/auth");
 
-// SIGNUP ENDPOINT
 auth.post("/signup", zValidator("json", signupValidator), async (c) => {
   const data = await c.req.json();
   const { email, password } = data;
   const authHeader = c.req.header("Authorization");
   const token = authHeader?.split(" ")[1];
 
+  // Make token validation consistent with admin auth
+  if (token) {
+    try {
+      jwt.verify(token, process.env.JWT_SECRET!);
+      return c.json({ message: "You are already logged in." }, 401);
+    } catch (error) {
+      // Token is invalid, continue with signup
+    }
+  }
+
   if (!token) {
     return c.json({ message: "Authorization token is missing!" }, 401);
+  }
+
+  const emailExistsInAdminTable = await checkEmailInAdminTable(email);
+  if (emailExistsInAdminTable) {
+    return c.json(
+      { message: "Email is already used for an admin account!" },
+      409
+    );
   }
 
   const existingUser = await findUserInDatabase(email);
@@ -95,6 +111,39 @@ auth.post("/signup", zValidator("json", signupValidator), async (c) => {
   }
 });
 
+// Add resend verification endpoint for consistency
+auth.post("/resend-verification", zValidator("json", signupValidator), async (c) => {
+  const { email } = await c.req.json();
+  
+  const user = await findUserInDatabase(email);
+  
+  if (!user) {
+    return c.json({ message: "User not found." }, 404);
+  }
+  
+  if (user.isVerified === 1) {
+    return c.json({ message: "Account already verified." }, 400);
+  }
+  
+  const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const verificationCodeExpires = new Date(Date.now() + 60 * 60 * 1000);
+  
+  await db
+    .update(usersTable)
+    .set({
+      verificationCode,
+      verificationCodeExpires,
+    })
+    .where(eq(usersTable.id, user.id));
+    
+  await sendVerificationEmail(email, verificationCode);
+  
+  return c.json({ 
+    message: "Verification email sent. Please check your inbox.",
+    isVerified: false,
+  });
+});
+
 // VERIFY OTP ENDPOINT
 auth.post("/verify-otp", zValidator("json", verifyOtpValidator), async (c) => {
   try {
@@ -166,6 +215,16 @@ auth.post("/login", zValidator("json", signupValidator), async (c) => {
   const { email, password } = data;
   const authHeader = c.req.header("Authorization");
   const token = authHeader?.split(" ")[1];
+
+  // Make token validation consistent with admin auth
+  if (token) {
+    try {
+      jwt.verify(token, process.env.JWT_SECRET!);
+      return c.json({ message: "You are already logged in." }, 401);
+    } catch (error) {
+      // Token is invalid, continue with login
+    }
+  }
 
   console.log("email:", email);
   console.log("token:", token);
