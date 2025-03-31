@@ -10,6 +10,14 @@ export async function findUserInDatabase(email: string) {
   return users.length > 0 ? users[0] : null;
 }
 
+export async function findUserById(id: string) {
+  const users = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, Number(id)));
+  return users.length > 0 ? users[0] : null;
+}
+
 export async function createUser(userData: {
   email: string;
   password: string;
