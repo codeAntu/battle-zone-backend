@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import auth from "./api/auth";  // Import the centralized auth router
+import "./types"; // Make sure this import exists
+import auth from "./api/auth";
 import profile from "./api/profile";
 import admin from "./api/admin";
 
@@ -11,7 +12,7 @@ app.use("*", cors({ origin: "*" }));
 // Use the centralized auth router
 app.route("/", auth);
 app.route("/", profile);
-app.route("/" , admin);
+app.route("/", admin);
 
 app.post("/hello", (c) => {
   return c.json({ message: "Hello, World!" });

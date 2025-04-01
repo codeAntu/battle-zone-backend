@@ -1,12 +1,13 @@
-import { eq } from "drizzle-orm";
+import { and, eq, getTableUniqueName } from "drizzle-orm";
 import db from "../config/db";
 import { tournamentsTable } from "../drizzle/schema";
 import { TournamentType, TournamentUpdateType } from "../zod/tournaments";
 
-export async function createTournament(data: TournamentType) {
+export async function createTournament(adminId: number, data: TournamentType) {
   const result = await db
     .insert(tournamentsTable)
     .values({
+      adminId: adminId,
       game: data.game as "PUBG" | "FREEFIRE",
       name: data.name,
       description: data.description || null,
@@ -24,49 +25,52 @@ export async function createTournament(data: TournamentType) {
 }
 
 export async function updateTournamentRoomId(
+  adminId: number,
   id: number,
   data: TournamentUpdateType
 ) {
-  console.log("Update data:", data); // Debugging line
-
   if (isNaN(id) || id <= 0) {
     throw new Error(`Invalid tournament ID: ${id}`);
   }
 
   try {
-    // First check if tournament exists
-    const tournament = await db
-      .select()
-      .from(tournamentsTable)
-      .where(eq(tournamentsTable.id, id))
-      .execute();
-
-    if (!tournament.length) {
-      throw new Error(`Tournament with ID ${id} not found`);
-    }
-
     const result = await db
       .update(tournamentsTable)
       .set({
-        roomId: data.roomId ? Number(data.roomId) : undefined,
+        roomId: Number(data.roomId),
       })
-      .where(eq(tournamentsTable.id, id));
+      .where(
+        and(eq(tournamentsTable.adminId, adminId), eq(tournamentsTable.id, id))
+      )
+      .execute();
 
-    return result;
+    // Check if any rows were affected by the update
+    if (!result || result[0].affectedRows === 0) {
+      throw new Error(`Tournament with ID ${id} not found for this admin`);
+    }
+
+    // Get the updated tournament
+    const tournament = await db
+      .select()
+      .from(tournamentsTable)
+      .where(
+        and(eq(tournamentsTable.adminId, adminId), eq(tournamentsTable.id, id))
+      )
+      .execute();
+
+    return tournament[0];
   } catch (error) {
-    console.error("Error updating tournament:", error); // Debugging line
-    throw error; // Pass the error up to be handled by the API
+    console.error("Error updating tournament:", error);
+    throw error;
   }
 }
 
-/**
- * Get all tournaments from the database
- */
-export async function getAllTournaments() {
+export async function getAllTournaments(adminId: number) {
   try {
     const tournaments = await db
       .select()
       .from(tournamentsTable)
+      .where(eq(tournamentsTable.adminId, adminId))
       .orderBy(tournamentsTable.date)
       .execute();
 
@@ -77,20 +81,14 @@ export async function getAllTournaments() {
   }
 }
 
-/**
- * Get a specific tournament by ID
- */
-export async function getTournamentById(id: number) {
-  if (isNaN(id) || id <= 0) {
-    throw new Error(`Invalid tournament ID: ${id}`);
-  }
-
+export async function getTournamentById(adminId: number, id: number) {
   try {
     const tournament = await db
       .select()
       .from(tournamentsTable)
-      .where(eq(tournamentsTable.id, id))
-      .execute();
+      .where(
+        and(eq(tournamentsTable.adminId, adminId), eq(tournamentsTable.id, id))
+      );
 
     if (!tournament.length) {
       throw new Error(`Tournament with ID ${id} not found`);
@@ -99,6 +97,82 @@ export async function getTournamentById(id: number) {
     return tournament[0];
   } catch (error) {
     console.error(`Error fetching tournament with ID ${id}:`, error);
+    throw error;
+  }
+}
+
+export async function getTournamentHistory(adminId: number) {
+  try {
+    const tournaments = await db
+      .select()
+      .from(tournamentsTable)
+      .where(
+        and(
+          eq(tournamentsTable.adminId, adminId),
+          eq(tournamentsTable.isEnded, true)
+        )
+      )
+      .orderBy(tournamentsTable.date)
+      .execute();
+
+    return tournaments;
+  } catch (error) {
+    console.error("Error fetching tournament history:", error);
+    throw error;
+  }
+}
+
+export async function endTournament(adminId: number, id: number) {
+  try {
+    const result = await db
+      .update(tournamentsTable)
+      .set({
+        isEnded: true,
+      })
+      .where(
+        and(eq(tournamentsTable.adminId, adminId), eq(tournamentsTable.id, id))
+      )
+      .execute();
+
+    // Check if any rows were affected by the update
+    if (!result || result[0].affectedRows === 0) {
+      throw new Error(`Tournament with ID ${id} not found for this admin`);
+    }
+
+    const tournament = await db
+      .select()
+      .from(tournamentsTable)
+      .where(
+        and(eq(tournamentsTable.adminId, adminId), eq(tournamentsTable.id, id))
+      )
+      .execute();
+
+    // todo -> choose winner
+
+    return tournament[0];
+  } catch (error) {
+    console.error("Error ending tournament:", error);
+    throw error;
+  }
+}
+
+export async function getCurrentTournaments(adminId: number) {
+  try {
+    const tournaments = await db
+      .select()
+      .from(tournamentsTable)
+      .where(
+        and(
+          eq(tournamentsTable.adminId, adminId),
+          eq(tournamentsTable.isEnded, false)
+        )
+      )
+      .orderBy(tournamentsTable.date)
+      .execute();
+
+    return tournaments;
+  } catch (error) {
+    console.error("Error fetching current tournaments:", error);
     throw error;
   }
 }

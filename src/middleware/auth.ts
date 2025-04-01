@@ -33,7 +33,7 @@ export const isAuthenticated = async (c: Context, next: Next) => {
       return c.json({ message: "User not found. Please login again." }, 401);
     }
 
-    if (user.isVerified !== 1) {
+    if (!user.isVerified) {
       return c.json(
         { message: "Account not verified. Please verify your account." },
         403
@@ -80,19 +80,16 @@ export const isAdmin = async (c: Context, next: Next) => {
       return c.json({ message: "Admin access required." }, 403);
     }
 
-    console.log("Decoded token:", decoded);
-    
     const admin = await findAdminInDatabase(decoded.email);
-    
+
     if (!admin) {
       return c.json({ message: "Admin not found. Please login again." }, 401);
     }
 
-    if (admin.isVerified !== 1) {
+    if (!admin.isVerified) {
       return c.json({ message: "Admin account not verified." }, 403);
     }
 
-    // Add admin data to the request context
     c.set("admin", {
       id: admin.id,
       email: admin.email,

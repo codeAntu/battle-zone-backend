@@ -50,7 +50,7 @@ auth.post("/signup", zValidator("json", signupValidator), async (c) => {
   const hashedPassword = await bcrypt.hash(password, saltRounds);
 
   if (existingUser) {
-    if (existingUser.isVerified === 1) {
+    if (existingUser.isVerified) {
       return c.json({ message: "User already exists and is verified!" }, 409);
     } else {
       console.log(
@@ -82,7 +82,7 @@ auth.post("/signup", zValidator("json", signupValidator), async (c) => {
       password: hashedPassword,
       verificationCode,
       verificationCodeExpires,
-      isVerified: 0,
+      isVerified: false,
       balance: 0,
     };
 
@@ -121,7 +121,7 @@ auth.post("/resend-verification", zValidator("json", signupValidator), async (c)
     return c.json({ message: "User not found." }, 404);
   }
   
-  if (user.isVerified === 1) {
+  if (user.isVerified) {
     return c.json({ message: "Account already verified." }, 400);
   }
   
@@ -158,7 +158,7 @@ auth.post("/verify-otp", zValidator("json", verifyOtpValidator), async (c) => {
     }
 
     // Check if user is already verified
-    if (user.isVerified === 1) {
+    if (user.isVerified) {
       return c.json(
         { message: "Account already verified. Please login." },
         200
@@ -185,7 +185,7 @@ auth.post("/verify-otp", zValidator("json", verifyOtpValidator), async (c) => {
     await db
       .update(usersTable)
       .set({
-        isVerified: 1,
+        isVerified: true,
         verificationCode: "", // Clear verification code after successful verification
       })
       .where(eq(usersTable.id, user.id));
@@ -241,7 +241,7 @@ auth.post("/login", zValidator("json", signupValidator), async (c) => {
     return c.json({ message: "User not found!" }, 404);
   }
 
-  if (user.isVerified === 0) {
+  if (!user.isVerified) {
     return c.json({ message: "User not verified!" }, 401);
   }
 

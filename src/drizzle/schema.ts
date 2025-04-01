@@ -8,6 +8,7 @@ import {
   timestamp,
   varchar,
   mysqlEnum,
+  boolean,
 } from "drizzle-orm/mysql-core";
 
 // Users table with constraint
@@ -18,7 +19,7 @@ export const usersTable = mysqlTable(
     name: varchar({ length: 255 }).default(""),
     email: varchar({ length: 255 }).notNull().unique(),
     password: varchar({ length: 255 }).notNull(),
-    isVerified: int().notNull().default(0),
+    isVerified: boolean().notNull().default(false),
     verificationCode: varchar({ length: 255 }).notNull(),
     verificationCodeExpires: datetime().notNull(),
     balance: int().notNull().default(0),
@@ -33,7 +34,7 @@ export const adminTable = mysqlTable("admin", {
   name: varchar({ length: 255 }).notNull(),
   email: varchar({ length: 255 }).notNull().unique(),
   password: varchar({ length: 255 }).notNull(),
-  isVerified: int().notNull().default(0),
+  isVerified: boolean().notNull().default(false),
   verificationCode: varchar({ length: 255 }).notNull(),
   verificationCodeExpires: datetime().notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -43,6 +44,9 @@ export const adminTable = mysqlTable("admin", {
 // Tournaments table
 export const tournamentsTable = mysqlTable("tournaments", {
   id: serial().primaryKey(),
+  adminId: int()
+    .notNull()
+    .references(() => adminTable.id),
   game: mysqlEnum("game", ["PUBG", "FREEFIRE"]).notNull(),
   name: varchar({ length: 255 }).notNull(),
   description: varchar({ length: 255 }),
@@ -53,6 +57,7 @@ export const tournamentsTable = mysqlTable("tournaments", {
   maxParticipants: int().notNull(),
   date: datetime().notNull(),
   time: datetime().notNull(),
+  isEnded: boolean().notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
@@ -78,7 +83,7 @@ export const historyTable = mysqlTable("history", {
   userId: int()
     .notNull()
     .references(() => usersTable.id),
-  turnamentId: int()
+  tournamentId: int()
     .notNull()
     .references(() => tournamentsTable.id),
   amount: int().notNull(),

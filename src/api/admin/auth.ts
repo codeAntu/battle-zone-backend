@@ -50,7 +50,7 @@ adminAuth.post("/signup", zValidator("json", signupValidator), async (c) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     if (existingAdmin) {
-      if (existingAdmin.isVerified === 1) {
+      if (existingAdmin.isVerified) {
         return c.json({ message: "Admin account already exists!" }, 409);
       } else {
         // Admin exists but not verified, resend verification
@@ -78,7 +78,7 @@ adminAuth.post("/signup", zValidator("json", signupValidator), async (c) => {
       password: hashedPassword,
       verificationCode,
       verificationCodeExpires,
-      isVerified: 0,
+      isVerified: false,
     };
 
     const newAdmin = await db.insert(adminTable).values(adminData);
@@ -115,7 +115,7 @@ adminAuth.post("/resend-verification", zValidator("json", signupValidator), asyn
     return c.json({ message: "Admin account not found." }, 404);
   }
   
-  if (admin.isVerified === 1) {
+  if (admin.isVerified) {
     return c.json({ message: "Admin account already verified." }, 400);
   }
   
@@ -160,7 +160,7 @@ adminAuth.post("/login", zValidator("json", signupValidator), async (c) => {
   }
   
   // Check if admin is verified
-  if (admin.isVerified === 0) {
+  if (!admin.isVerified) {
     return c.json({ message: "Admin account not verified!" }, 401);
   }
 
@@ -212,7 +212,7 @@ adminAuth.post(
       }
       
       // Check if admin is already verified
-      if (admin.isVerified === 1) {
+      if (admin.isVerified) {
         return c.json(
           { message: "Admin account already verified. Please login." },
           200
@@ -240,7 +240,7 @@ adminAuth.post(
       await db
         .update(adminTable)
         .set({
-          isVerified: 1,
+          isVerified: true,
           verificationCode: "", // Clear verification code after successful verification
         })
         .where(eq(adminTable.id, admin.id));
