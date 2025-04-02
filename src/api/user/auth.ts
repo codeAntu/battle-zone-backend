@@ -1,11 +1,11 @@
 import { zValidator } from "@hono/zod-validator";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import db from "../config/db";
-import { usersTable } from "../drizzle/schema";
-import { sendVerificationEmail } from "../helpers/email";
-import { findUserInDatabase, checkEmailInAdminTable } from "../helpers/user";
-import { signupValidator, verifyOtpValidator } from "../zod/auth";
+import db from "../../config/db";
+import { usersTable } from "../../drizzle/schema";
+import { sendVerificationEmail } from "../../helpers/email";
+import { findUserInDatabase, checkEmailInAdminTable } from "../../helpers/user";
+import { signupValidator, verifyOtpValidator } from "../../zod/auth";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
@@ -25,10 +25,6 @@ auth.post("/signup", zValidator("json", signupValidator), async (c) => {
     } catch (error) {
       // Token is invalid, continue with signup
     }
-  }
-
-  if (!token) {
-    return c.json({ message: "Authorization token is missing!" }, 401);
   }
 
   const emailExistsInAdminTable = await checkEmailInAdminTable(email);
@@ -112,37 +108,43 @@ auth.post("/signup", zValidator("json", signupValidator), async (c) => {
 });
 
 // Add resend verification endpoint for consistency
-auth.post("/resend-verification", zValidator("json", signupValidator), async (c) => {
-  const { email } = await c.req.json();
-  
-  const user = await findUserInDatabase(email);
-  
-  if (!user) {
-    return c.json({ message: "User not found." }, 404);
+auth.post(
+  "/resend-verification",
+  zValidator("json", signupValidator),
+  async (c) => {
+    const { email } = await c.req.json();
+
+    const user = await findUserInDatabase(email);
+
+    if (!user) {
+      return c.json({ message: "User not found." }, 404);
+    }
+
+    if (user.isVerified) {
+      return c.json({ message: "Account already verified." }, 400);
+    }
+
+    const verificationCode = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+    const verificationCodeExpires = new Date(Date.now() + 60 * 60 * 1000);
+
+    await db
+      .update(usersTable)
+      .set({
+        verificationCode,
+        verificationCodeExpires,
+      })
+      .where(eq(usersTable.id, user.id));
+
+    await sendVerificationEmail(email, verificationCode);
+
+    return c.json({
+      message: "Verification email sent. Please check your inbox.",
+      isVerified: false,
+    });
   }
-  
-  if (user.isVerified) {
-    return c.json({ message: "Account already verified." }, 400);
-  }
-  
-  const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-  const verificationCodeExpires = new Date(Date.now() + 60 * 60 * 1000);
-  
-  await db
-    .update(usersTable)
-    .set({
-      verificationCode,
-      verificationCodeExpires,
-    })
-    .where(eq(usersTable.id, user.id));
-    
-  await sendVerificationEmail(email, verificationCode);
-  
-  return c.json({ 
-    message: "Verification email sent. Please check your inbox.",
-    isVerified: false,
-  });
-});
+);
 
 // VERIFY OTP ENDPOINT
 auth.post("/verify-otp", zValidator("json", verifyOtpValidator), async (c) => {
@@ -254,7 +256,7 @@ auth.post("/login", zValidator("json", signupValidator), async (c) => {
   const tokenData = {
     id: user.id,
     email: user.email,
-    name: user.name // Add name to token data for better context
+    name: user.name, // Add name to token data for better context
   };
 
   const authToken = jwt.sign(tokenData, process.env.JWT_SECRET!, {

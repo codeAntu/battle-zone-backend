@@ -12,7 +12,7 @@ export interface UserTokenPayload {
 }
 
 // Middleware to check if user is logged in
-export const isAuthenticated = async (c: Context, next: Next) => {
+export const isUser = async (c: Context, next: Next) => {
   const authHeader = c.req.header("Authorization");
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {

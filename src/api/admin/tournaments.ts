@@ -1,20 +1,20 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import {
+  createTournament,
+  endTournament,
+  getMyCurrentTournaments,
+  getMyTournamentById,
+  getMyTournamentHistory,
+  getMyTournaments,
+  updateTournamentRoomId,
+} from "../../helpers/tournaments";
+import { isAdmin } from "../../middleware/auth";
+import { getAdmin } from "../../utils/context";
+import {
   tournamentsValidation,
   tournamentUpdateValidation,
 } from "../../zod/tournaments";
-import { isAdmin } from "../../middleware/auth";
-import {
-  createTournament,
-  updateTournamentRoomId,
-  getAllTournaments,
-  getTournamentById,
-  getTournamentHistory,
-  endTournament,
-  getCurrentTournaments,
-} from "../../helpers/tournaments";
-import { getAdmin } from "../../utils/context";
 
 const tournamentApi = new Hono().basePath("/tournaments");
 
@@ -23,7 +23,7 @@ tournamentApi.use("/*", isAdmin);
 tournamentApi.get("/", async (c) => {
   try {
     const admin = getAdmin(c);
-    const tournaments = await getAllTournaments(admin.id);
+    const tournaments = await getMyTournaments(admin.id);
     return c.json({
       message: "Tournaments retrieved successfully",
       data: tournaments,
@@ -39,7 +39,7 @@ tournamentApi.get("/", async (c) => {
 tournamentApi.get("/history", async (c) => {
   try {
     const admin = getAdmin(c);
-    const tournaments = await getTournamentHistory(admin.id);
+    const tournaments = await getMyTournamentHistory(admin.id);
     return c.json({
       message: "Tournaments retrieved successfully",
       data: tournaments,
@@ -55,7 +55,7 @@ tournamentApi.get("/history", async (c) => {
 tournamentApi.get("/current", async (c) => {
   try {
     const admin = getAdmin(c);
-    const tournaments = await getCurrentTournaments(admin.id);
+    const tournaments = await getMyCurrentTournaments(admin.id);
     return c.json({
       message: "Current tournaments retrieved successfully",
       data: tournaments,
@@ -78,7 +78,7 @@ tournamentApi.get("/:id", async (c) => {
     const id = Number(c.req.param("id"));
     console.log(`Admin ${admin.id} accessing tournament ${id}`);
 
-    const tournament = await getTournamentById(admin.id, id);
+    const tournament = await getMyTournamentById(admin.id, id);
     return c.json({
       message: "Tournament retrieved successfully",
       tournament,

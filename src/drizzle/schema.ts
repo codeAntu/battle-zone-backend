@@ -96,6 +96,9 @@ export const withdrawTable = mysqlTable("withdraw", {
   userId: int()
     .notNull()
     .references(() => usersTable.id),
+  tournamentId: int()
+    .notNull()
+    .references(() => tournamentsTable.id),
   amount: int().notNull(),
   status: varchar({ length: 255 }).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
