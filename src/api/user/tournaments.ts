@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import {
   getAllUserTournaments,
   getTournamentById,
+  getUserTournamentsByName,
   participateInTournament,
 } from "../../helpers/user/tournaments";
 import { isUser } from "../../middleware/auth";
@@ -74,6 +75,32 @@ tournamentApi.post("/participate", async (c) => {
       error instanceof Error
         ? error.message
         : "Failed to participate in tournament";
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
+// get tournament by game name
+
+tournamentApi.get("/game/:name", async (c) => {
+  try {
+    const user = getUser(c);
+    const gameName = c.req.param("name");
+    if (!gameName) {
+      return c.json({ error: "Game name is required" }, 400);
+    }
+
+    const tournaments = await getUserTournamentsByName(user.id, gameName);
+    if (!tournaments) {
+      return c.json({ message: "No tournaments found" }, 404);
+    }
+    return c.json({
+      message: "Tournaments retrieved successfully",
+      tournaments,
+    });
+  } catch (error) {
+    console.error("Error retrieving tournaments:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to retrieve tournaments";
     return c.json({ error: errorMessage }, 500);
   }
 });

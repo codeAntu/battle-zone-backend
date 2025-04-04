@@ -5,6 +5,7 @@ import {
   tournamentsTable,
   withdrawTable,
 } from "../../drizzle/schema";
+import { MySqlColumn } from "drizzle-orm/mysql-core";
 
 export async function getAllUserTournaments(userId: number) {
   try {
@@ -83,6 +84,31 @@ export async function getTournamentById(userId: number, id: number) {
     };
   } catch (error) {
     console.error("Error fetching tournament by ID:", error);
+    throw error;
+  }
+}
+
+export async function getUserTournamentsByName(
+  userId: number,
+  gameName: string
+) {
+  try {
+    const tournaments = await db
+      .select()
+      .from(tournamentsTable)
+      .where(
+        and(
+          eq(tournamentsTable.game, gameName as "PUBG" | "FREEFIRE"),
+          eq(tournamentsTable.isEnded, false)
+        )
+      )
+      .execute();
+    // todo :- remove participated tournaments
+    
+
+    return tournaments;
+  } catch (error) {
+    console.error("Error fetching tournaments by game name:", error);
     throw error;
   }
 }
