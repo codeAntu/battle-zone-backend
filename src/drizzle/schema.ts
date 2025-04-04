@@ -41,6 +41,8 @@ export const adminTable = mysqlTable("admin", {
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 
+
+
 // Tournaments table
 export const tournamentsTable = mysqlTable("tournaments", {
   id: serial().primaryKey(),
