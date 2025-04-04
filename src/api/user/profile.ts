@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import jwt from "jsonwebtoken";
-import { findUserById } from "../../helpers/user";
+import { findUserById } from "../../helpers/user/user";
 
 const profile = new Hono().basePath("/profile");
 

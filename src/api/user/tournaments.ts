@@ -3,7 +3,7 @@ import {
   getAllUserTournaments,
   getTournamentById,
   participateInTournament,
-} from "../../helpers/tournaments";
+} from "../../helpers/user/tournaments";
 import { isUser } from "../../middleware/auth";
 import { getUser } from "../../utils/context";
 

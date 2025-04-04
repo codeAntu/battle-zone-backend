@@ -8,7 +8,7 @@ import {
   getMyTournamentHistory,
   getMyTournaments,
   updateTournamentRoomId,
-} from "../../helpers/tournaments";
+} from "../../helpers/admin/tournaments";
 import { isAdmin } from "../../middleware/auth";
 import { getAdmin } from "../../utils/context";
 import {
@@ -103,10 +103,13 @@ tournamentApi.post(
       const data = await c.req.json();
       const admin = getAdmin(c);
 
-      const result = await createTournament(admin.id, data);
+      const tournamentId = await createTournament(admin.id, data);
+
+      const tournament = await getMyTournamentById(admin.id, tournamentId);
+
       return c.json({
         message: "Tournament created successfully",
-        data: result,
+        tournament,
       });
     } catch (error: unknown) {
       console.error("Error creating tournament:", error);

@@ -1,7 +1,7 @@
 import { Context, Next } from "hono";
 import jwt from "jsonwebtoken";
-import { findUserInDatabase } from "../helpers/user";
-import { findAdminInDatabase } from "../helpers/admin";
+import { findUserInDatabase } from "../helpers/user/user";
+import { findAdminInDatabase } from "../helpers/admin/admin";
 
 export interface UserTokenPayload {
   id: number;

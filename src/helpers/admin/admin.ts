@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import db from "../config/db";
-import { adminTable, usersTable } from "../drizzle/schema";
+import db from "../../config/db";
+import { adminTable, usersTable } from "../../drizzle/schema";
 
 export async function findAdminInDatabase(email: string) {
   const admins = await db

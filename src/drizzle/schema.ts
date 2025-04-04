@@ -41,9 +41,7 @@ export const adminTable = mysqlTable("admin", {
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 
-
-
-// Tournaments table
+// Tournaments table with combined datetime
 export const tournamentsTable = mysqlTable("tournaments", {
   id: serial().primaryKey(),
   adminId: int()
@@ -52,13 +50,12 @@ export const tournamentsTable = mysqlTable("tournaments", {
   game: mysqlEnum("game", ["PUBG", "FREEFIRE"]).notNull(),
   name: varchar({ length: 255 }).notNull(),
   description: varchar({ length: 255 }),
-  roomId: int().notNull(),
+  roomId: varchar({ length: 255 }).default("0"),
   entryFee: int().notNull(),
   prize: int().notNull(),
   perKillPrize: int().notNull(),
   maxParticipants: int().notNull(),
-  date: datetime().notNull(),
-  time: datetime().notNull(),
+  scheduledAt: datetime().notNull(),
   isEnded: boolean().notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),

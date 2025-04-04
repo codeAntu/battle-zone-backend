@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import db from "../../config/db";
 import { usersTable } from "../../drizzle/schema";
 import { sendVerificationEmail } from "../../helpers/email";
-import { checkEmailInAdminTable, findUserInDatabase } from "../../helpers/user";
+import { checkEmailInAdminTable, findUserInDatabase } from "../../helpers/user/user";
 import { signupValidator, verifyOtpValidator } from "../../zod/auth";
 
 const auth = new Hono().basePath("/auth");
