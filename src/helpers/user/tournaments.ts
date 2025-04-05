@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import db from "../../config/db";
 import {
   tournamentParticipantsTable,
@@ -94,16 +94,25 @@ export async function getUserTournamentsByName(
 ) {
   try {
     const tournaments = await db
-      .select()
+      .select({
+        tournament: tournamentsTable,
+      })
       .from(tournamentsTable)
+      .leftJoin(
+        tournamentParticipantsTable,
+        and(
+          eq(tournamentParticipantsTable.tournamentId, tournamentsTable.id),
+          eq(tournamentParticipantsTable.userId, userId)
+        )
+      )
       .where(
         and(
           eq(tournamentsTable.game, gameName as "PUBG" | "FREEFIRE"),
-          eq(tournamentsTable.isEnded, false)
+          eq(tournamentsTable.isEnded, false),
+          isNull(tournamentParticipantsTable.id)
         )
       )
       .execute();
-    // todo :- remove participated tournaments
 
     return tournaments;
   } catch (error) {

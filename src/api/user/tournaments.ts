@@ -99,7 +99,7 @@ tournamentApi.get("/isParticipated/:tournamentId", async (c) => {
 
     return c.json({
       message: "Participation status retrieved successfully",
-      data: participation,
+      participation,
     });
   } catch (error) {
     console.error("Error checking participation:", error);
@@ -108,7 +108,6 @@ tournamentApi.get("/isParticipated/:tournamentId", async (c) => {
     return c.json({ error: errorMessage }, 500);
   }
 });
-
 
 tournamentApi.get("/game/:name", async (c) => {
   try {
