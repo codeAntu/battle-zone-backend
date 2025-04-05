@@ -1,5 +1,4 @@
 import { sql } from "drizzle-orm";
-import { check } from "drizzle-orm/gel-core";
 import {
   datetime,
   int,
@@ -9,6 +8,7 @@ import {
   varchar,
   mysqlEnum,
   boolean,
+  check,
 } from "drizzle-orm/mysql-core";
 
 // Users table with constraint
@@ -26,7 +26,7 @@ export const usersTable = mysqlTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },
-  (table) => [check("balance is non-negative", sql`${table.balance} >= 0`)]
+  (table) => [check("balance_non_negative", sql`${table.balance} >= 0`)]
 );
 
 export const adminTable = mysqlTable("admin", {
@@ -42,24 +42,32 @@ export const adminTable = mysqlTable("admin", {
 });
 
 // Tournaments table with combined datetime
-export const tournamentsTable = mysqlTable("tournaments", {
-  id: serial().primaryKey(),
-  adminId: int()
-    .notNull()
-    .references(() => adminTable.id),
-  game: mysqlEnum("game", ["PUBG", "FREEFIRE"]).notNull(),
-  name: varchar({ length: 255 }).notNull(),
-  description: varchar({ length: 255 }),
-  roomId: varchar({ length: 255 }).default("0"),
-  entryFee: int().notNull(),
-  prize: int().notNull(),
-  perKillPrize: int().notNull(),
-  maxParticipants: int().notNull(),
-  scheduledAt: datetime().notNull(),
-  isEnded: boolean().notNull().default(false),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
-});
+export const tournamentsTable = mysqlTable(
+  "tournaments",
+  {
+    id: serial().primaryKey(),
+    adminId: int()
+      .notNull()
+      .references(() => adminTable.id),
+    game: mysqlEnum("game", ["PUBG", "FREEFIRE"]).notNull(),
+    name: varchar({ length: 255 }).notNull(),
+    description: varchar({ length: 255 }),
+    roomId: varchar({ length: 255 }).default("0"),
+    entryFee: int().notNull(),
+    prize: int().notNull(),
+    perKillPrize: int().notNull(),
+    maxParticipants: int().notNull(),
+    scheduledAt: datetime().notNull(),
+    isEnded: boolean().notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (table) => [
+    check("entry_fee_non_negative", sql`${table.entryFee} >= 0`),
+    check("prize_non_negative", sql`${table.prize} >= 0`),
+    check("per_kill_prize_non_negative", sql`${table.perKillPrize} >= 0`),
+  ]
+);
 
 // Tournament participants table
 export const tournamentParticipantsTable = mysqlTable(

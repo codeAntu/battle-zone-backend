@@ -3,6 +3,7 @@ import {
   getAllUserTournaments,
   getTournamentById,
   getUserTournamentsByName,
+  isUserParticipatedInTournament,
   participateInTournament,
 } from "../../helpers/user/tournaments";
 import { isUser } from "../../middleware/auth";
@@ -58,17 +59,21 @@ tournamentApi.get("/:id", async (c) => {
   }
 });
 
-tournamentApi.post("/participate", async (c) => {
+tournamentApi.post("/participate/:tournamentId", async (c) => {
   try {
     const user = getUser(c);
-    const { tournamentId } = await c.req.json();
+    const tournamentId = c.req.param("tournamentId");
     if (!tournamentId) {
       return c.json({ error: "Tournament ID is required" }, 400);
     }
-
-    await participateInTournament(tournamentId, user.id);
-
-    return c.json({ message: "Successfully participated in the tournament" });
+    const participate = await participateInTournament(
+      Number(tournamentId),
+      user.id
+    );
+    return c.json({
+      message: "Successfully participated in the tournament",
+      data: participate,
+    });
   } catch (error: unknown) {
     console.error("Error participating in tournament:", error);
     const errorMessage =
@@ -79,7 +84,31 @@ tournamentApi.post("/participate", async (c) => {
   }
 });
 
-// get tournament by game name
+tournamentApi.get("/isParticipated/:tournamentId", async (c) => {
+  try {
+    const user = getUser(c);
+    const tournamentId = c.req.param("tournamentId");
+    if (!tournamentId) {
+      return c.json({ error: "Tournament ID is required" }, 400);
+    }
+
+    const participation = await isUserParticipatedInTournament(
+      Number(tournamentId),
+      user.id
+    );
+
+    return c.json({
+      message: "Participation status retrieved successfully",
+      data: participation,
+    });
+  } catch (error) {
+    console.error("Error checking participation:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to check participation";
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
 
 tournamentApi.get("/game/:name", async (c) => {
   try {

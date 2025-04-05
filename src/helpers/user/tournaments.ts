@@ -3,9 +3,9 @@ import db from "../../config/db";
 import {
   tournamentParticipantsTable,
   tournamentsTable,
+  usersTable,
   withdrawTable,
 } from "../../drizzle/schema";
-import { MySqlColumn } from "drizzle-orm/mysql-core";
 
 export async function getAllUserTournaments(userId: number) {
   try {
@@ -104,7 +104,6 @@ export async function getUserTournamentsByName(
       )
       .execute();
     // todo :- remove participated tournaments
-    
 
     return tournaments;
   } catch (error) {
@@ -121,7 +120,12 @@ export async function participateInTournament(
     const tournament = await db
       .select()
       .from(tournamentsTable)
-      .where(eq(tournamentsTable.id, tournamentId))
+      .where(
+        and(
+          eq(tournamentsTable.id, tournamentId),
+          eq(tournamentsTable.isEnded, false)
+        )
+      )
       .execute();
 
     if (!tournament || tournament.length === 0) {
@@ -145,14 +149,68 @@ export async function participateInTournament(
       );
     }
 
-    const result = await db
-      .insert(tournamentParticipantsTable)
-      .values({ tournamentId, userId })
+    // check balance of user
+    const user = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
       .execute();
 
-    return result;
+    if (!user || user.length === 0) {
+      throw new Error(`User with ID ${userId} does not exist`);
+    }
+
+    const userBalance = user[0].balance;
+
+    const tournamentEntryFee = tournament[0].entryFee;
+    if (userBalance < tournamentEntryFee) {
+      throw new Error(
+        "Don't have enough balance to participate in this tournament"
+      );
+    }
+
+    await db
+      .update(usersTable)
+      .set({
+        balance: userBalance - tournamentEntryFee,
+      })
+      .where(and(eq(usersTable.id, userId)))
+      .execute();
+
+    const participantInsert = await db
+      .insert(tournamentParticipantsTable)
+      .values({
+        tournamentId,
+        userId,
+      })
+      .execute();
+
+    return participantInsert;
   } catch (error) {
     console.error("Error participating in tournament:", error);
+    throw error;
+  }
+}
+
+export async function isUserParticipatedInTournament(
+  tournamentId: number,
+  userId: number
+) {
+  try {
+    const participation = await db
+      .select()
+      .from(tournamentParticipantsTable)
+      .where(
+        and(
+          eq(tournamentParticipantsTable.tournamentId, tournamentId),
+          eq(tournamentParticipantsTable.userId, userId)
+        )
+      )
+      .execute();
+
+    return participation && participation.length > 0;
+  } catch (error) {
+    console.error("Error checking user participation:", error);
     throw error;
   }
 }
