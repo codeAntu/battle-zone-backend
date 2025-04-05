@@ -57,6 +57,7 @@ export const tournamentsTable = mysqlTable(
     prize: int().notNull(),
     perKillPrize: int().notNull(),
     maxParticipants: int().notNull(),
+    currentParticipants: int().notNull().default(0),
     scheduledAt: datetime().notNull(),
     isEnded: boolean().notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -66,6 +67,14 @@ export const tournamentsTable = mysqlTable(
     check("entry_fee_non_negative", sql`${table.entryFee} >= 0`),
     check("prize_non_negative", sql`${table.prize} >= 0`),
     check("per_kill_prize_non_negative", sql`${table.perKillPrize} >= 0`),
+    check(
+      "current_participants_non_negative",
+      sql`${table.currentParticipants} >= 0`
+    ),
+    check(
+      "current_participants_max",
+      sql`${table.currentParticipants} <= ${table.maxParticipants}`
+    ),
   ]
 );
 

@@ -103,6 +103,8 @@ tournamentApi.post(
       const data = await c.req.json();
       const admin = getAdmin(c);
 
+      console.log("data", data);
+
       const tournamentId = await createTournament(admin.id, data);
 
       const tournament = await getMyTournamentById(admin.id, tournamentId);

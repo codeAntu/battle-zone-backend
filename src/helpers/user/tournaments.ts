@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import db from "../../config/db";
 import {
   tournamentParticipantsTable,
@@ -19,7 +19,8 @@ export async function getAllUserTournaments(userId: number) {
       .where(
         and(
           eq(tournamentParticipantsTable.userId, userId),
-          eq(tournamentsTable.isEnded, false)
+          eq(tournamentsTable.isEnded, false),
+          gt(tournamentsTable.scheduledAt, new Date())
         )
       )
       .orderBy(tournamentsTable.scheduledAt)
@@ -109,7 +110,8 @@ export async function getUserTournamentsByName(
         and(
           eq(tournamentsTable.game, gameName as "PUBG" | "FREEFIRE"),
           eq(tournamentsTable.isEnded, false),
-          isNull(tournamentParticipantsTable.id)
+          isNull(tournamentParticipantsTable.id),
+          gt(tournamentsTable.scheduledAt, new Date())
         )
       )
       .execute();
@@ -132,13 +134,14 @@ export async function participateInTournament(
       .where(
         and(
           eq(tournamentsTable.id, tournamentId),
-          eq(tournamentsTable.isEnded, false)
+          eq(tournamentsTable.isEnded, false),
+          gt(tournamentsTable.scheduledAt, new Date())
         )
       )
       .execute();
 
     if (!tournament || tournament.length === 0) {
-      throw new Error(`Tournament with ID ${tournamentId} does not exist`);
+      throw new Error(`Tournament does not exist`);
     }
 
     const existingParticipant = await db
@@ -153,9 +156,20 @@ export async function participateInTournament(
       .execute();
 
     if (existingParticipant && existingParticipant.length > 0) {
-      throw new Error(
-        `User with ID ${userId} has already participated in tournament ${tournamentId}`
-      );
+      throw new Error(`Already participated in tournament`);
+    }
+
+    const maxParticipants = tournament[0].maxParticipants;
+
+    const currentParticipants = await db
+      .select()
+      .from(tournamentParticipantsTable)
+      .where(eq(tournamentParticipantsTable.tournamentId, tournamentId))
+      .execute();
+
+    const currentParticipantsCount = currentParticipants.length;
+    if (currentParticipantsCount >= maxParticipants) {
+      throw new Error(`Tournament has reached its maximum participants`);
     }
 
     // check balance of user
@@ -166,7 +180,7 @@ export async function participateInTournament(
       .execute();
 
     if (!user || user.length === 0) {
-      throw new Error(`User with ID ${userId} does not exist`);
+      throw new Error(`User does not exist`);
     }
 
     const userBalance = user[0].balance;
@@ -192,6 +206,14 @@ export async function participateInTournament(
         tournamentId,
         userId,
       })
+      .execute();
+
+    await db
+      .update(tournamentsTable)
+      .set({
+        currentParticipants: currentParticipantsCount + 1,
+      })
+      .where(eq(tournamentsTable.id, tournamentId))
       .execute();
 
     return participantInsert;
