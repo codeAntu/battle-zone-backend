@@ -66,6 +66,8 @@ export async function sendVerificationEmail(
   to: string,
   verificationCode: string
 ): Promise<any> {
+
+  // todo
   // const name = to.split("@")[0]; // Extract name from email address
   // const html = generateVerificationEmailHtml(name, verificationCode);
 

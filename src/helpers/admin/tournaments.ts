@@ -1,9 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import db from "../../config/db";
 import {
+  historyTable,
   tournamentParticipantsTable,
   tournamentsTable,
-  withdrawTable,
+  usersTable,
 } from "../../drizzle/schema";
 import { TournamentType, TournamentUpdateType } from "../../zod/tournaments";
 
@@ -125,9 +126,87 @@ export async function getMyTournamentHistory(adminId: number) {
   }
 }
 
-export async function endTournament(adminId: number, id: number) {
+export async function endTournament(
+  adminId: number,
+  id: number,
+  userId: number
+) {
   try {
-    const result = await db
+    // Input validation
+    if (isNaN(id) || id <= 0) {
+      throw new Error(`Invalid tournament ID: ${id}`);
+    }
+
+    if (isNaN(userId) || userId <= 0) {
+      throw new Error(`Invalid user ID: ${userId}`);
+    }
+
+    // First check if the tournament exists and belongs to this admin
+    const tournament = await db
+      .select()
+      .from(tournamentsTable)
+      .where(
+        and(
+          eq(tournamentsTable.adminId, adminId),
+          eq(tournamentsTable.id, id),
+          eq(tournamentsTable.isEnded, false) // Ensure tournament is not already ended
+        )
+      )
+      .execute();
+
+    if (!tournament.length) {
+      throw new Error(`Tournament with ID ${id} not found or already ended`);
+    }
+
+    // Verify the userId exists and participated in the tournament
+    const participant = await db
+      .select({
+        participantId: tournamentParticipantsTable.id,
+        user: usersTable,
+      })
+      .from(tournamentParticipantsTable)
+      .innerJoin(
+        usersTable,
+        eq(tournamentParticipantsTable.userId, usersTable.id)
+      )
+      .where(
+        and(
+          eq(tournamentParticipantsTable.tournamentId, id),
+          eq(tournamentParticipantsTable.userId, userId)
+        )
+      )
+      .execute();
+
+    if (!participant.length) {
+      throw new Error(
+        `User with ID ${userId} is not a participant in this tournament`
+      );
+    }
+
+    const user = participant[0].user;
+    const prizeAmount = tournament[0].prize;
+
+    // Record the winner in the history table
+    await db
+      .insert(historyTable)
+      .values({
+        userId: userId,
+        tournamentId: id,
+        amount: prizeAmount,
+      })
+      .execute();
+
+    // Update user balance with the prize amount
+    await db
+      .update(usersTable)
+      .set({
+        balance: user.balance + prizeAmount,
+      })
+      .where(eq(usersTable.id, userId))
+      .execute();
+
+    // Update tournament to ended status
+    await db
       .update(tournamentsTable)
       .set({
         isEnded: true,
@@ -137,12 +216,8 @@ export async function endTournament(adminId: number, id: number) {
       )
       .execute();
 
-    // Check if any rows were affected by the update
-    if (!result || result[0].affectedRows === 0) {
-      throw new Error(`Tournament with ID ${id} not found for this admin`);
-    }
-
-    const tournament = await db
+    // Get the updated tournament
+    const updatedTournament = await db
       .select()
       .from(tournamentsTable)
       .where(
@@ -150,9 +225,7 @@ export async function endTournament(adminId: number, id: number) {
       )
       .execute();
 
-    // todo -> choose winner
-
-    return tournament[0];
+    return updatedTournament[0];
   } catch (error) {
     console.error("Error ending tournament:", error);
     throw error;
@@ -176,6 +249,44 @@ export async function getMyCurrentTournaments(adminId: number) {
     return tournaments;
   } catch (error) {
     console.error("Error fetching current tournaments:", error);
+    throw error;
+  }
+}
+
+export async function getTournamentParticipants(adminId: number, id: number) {
+  try {
+    // check if tournament belongs to admin
+    const tournament = await db
+      .select()
+      .from(tournamentsTable)
+      .where(
+        and(eq(tournamentsTable.adminId, adminId), eq(tournamentsTable.id, id))
+      )
+      .execute();
+
+    if (!tournament.length) {
+      throw new Error(`Tournament not found for this admin`);
+    }
+
+    const participants = await db
+      .select({
+        id: tournamentParticipantsTable.id,
+        joinedAt: tournamentParticipantsTable.joinedAt,
+        name: usersTable.name,
+        email: usersTable.email,
+        userId: usersTable.id,
+      })
+      .from(tournamentParticipantsTable)
+      .innerJoin(
+        usersTable,
+        eq(tournamentParticipantsTable.userId, usersTable.id)
+      )
+      .where(eq(tournamentParticipantsTable.tournamentId, id))
+      .execute();
+
+    return participants;
+  } catch (error) {
+    console.error("Error fetching tournament participants:", error);
     throw error;
   }
 }

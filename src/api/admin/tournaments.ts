@@ -7,6 +7,7 @@ import {
   getMyTournamentById,
   getMyTournamentHistory,
   getMyTournaments,
+  getTournamentParticipants,
   updateTournamentRoomId,
 } from "../../helpers/admin/tournaments";
 import { isAdmin } from "../../middleware/auth";
@@ -26,7 +27,7 @@ tournamentApi.get("/", async (c) => {
     const tournaments = await getMyTournaments(admin.id);
     return c.json({
       message: "Tournaments retrieved successfully",
-      data: tournaments,
+      tournaments,
     });
   } catch (error: unknown) {
     console.error("Error retrieving tournaments:", error);
@@ -42,7 +43,7 @@ tournamentApi.get("/history", async (c) => {
     const tournaments = await getMyTournamentHistory(admin.id);
     return c.json({
       message: "Tournaments retrieved successfully",
-      data: tournaments,
+      tournaments,
     });
   } catch (error: unknown) {
     console.error("Error retrieving tournaments:", error);
@@ -58,7 +59,7 @@ tournamentApi.get("/current", async (c) => {
     const tournaments = await getMyCurrentTournaments(admin.id);
     return c.json({
       message: "Current tournaments retrieved successfully",
-      data: tournaments,
+      tournaments,
     });
   } catch (error: unknown) {
     console.error("Error retrieving current tournaments:", error);
@@ -149,10 +150,8 @@ tournamentApi.post("/end/:id", async (c) => {
   try {
     const admin = getAdmin(c);
     const id = Number(c.req.param("id"));
-    console.log(`Admin ${admin.id} ending tournament ${id}`);
-
-    const tournament = await endTournament(admin.id, id);
-
+    const { winnerId } = await c.req.json();
+    const tournament = await endTournament(admin.id, id, winnerId);
     return c.json({
       message: "End Tournament",
       tournament,
@@ -161,6 +160,31 @@ tournamentApi.post("/end/:id", async (c) => {
     console.error("Error ending tournament:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Failed to end tournament";
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
+tournamentApi.get("participants/:id", async (c) => {
+  try {
+    const admin = getAdmin(c);
+    const id = Number(c.req.param("id"));
+    console.log(`Admin ${admin.id} accessing tournament ${id}`);
+
+    const tournamentParticipants = await getTournamentParticipants(
+      admin.id,
+      id
+    );
+
+    return c.json({
+      message: "Get Tournament Participants",
+      participants: tournamentParticipants,
+    });
+  } catch (error: unknown) {
+    console.error("Error retrieving tournament participants:", error);
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Failed to retrieve tournament participants";
     return c.json({ error: errorMessage }, 500);
   }
 });

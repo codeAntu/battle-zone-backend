@@ -4,7 +4,7 @@ import {
   tournamentParticipantsTable,
   tournamentsTable,
   usersTable,
-  withdrawTable,
+  historyTable,
 } from "../../drizzle/schema";
 
 export async function getAllUserTournaments(userId: number) {
@@ -35,6 +35,11 @@ export async function getAllUserTournaments(userId: number) {
 
 export async function getTournamentById(userId: number, id: number) {
   try {
+    // Validate that id is a valid number
+    if (isNaN(id) || id <= 0) {
+      throw new Error("Invalid tournament ID provided");
+    }
+    
     // Fetch the tournament details
     const tournament = await db
       .select()
@@ -64,11 +69,11 @@ export async function getTournamentById(userId: number, id: number) {
 
     // Check if the tournament has ended
     if (tournamentData.isEnded) {
-      // Fetch the winners from the withdrawTable
+      // Fetch the winners from the historyTable
       const winners = await db
         .select()
-        .from(withdrawTable)
-        .where(eq(withdrawTable.tournamentId, id))
+        .from(historyTable)
+        .where(eq(historyTable.tournamentId, id))
         .execute();
 
       return {
@@ -242,6 +247,43 @@ export async function isUserParticipatedInTournament(
     return participation && participation.length > 0;
   } catch (error) {
     console.error("Error checking user participation:", error);
+    throw error;
+  }
+}
+
+export async function getParticipatedTournaments(userId: number) {
+  try {
+    // Get tournaments the user has participated in
+    const tournaments = await db
+      .select({
+        id: tournamentsTable.id,
+        adminId: tournamentsTable.adminId,
+        game: tournamentsTable.game,
+        name: tournamentsTable.name,
+        description: tournamentsTable.description,
+        roomId: tournamentsTable.roomId,
+        entryFee: tournamentsTable.entryFee,
+        prize: tournamentsTable.prize,
+        perKillPrize: tournamentsTable.perKillPrize,
+        maxParticipants: tournamentsTable.maxParticipants,
+        currentParticipants: tournamentsTable.currentParticipants,
+        scheduledAt: tournamentsTable.scheduledAt,
+        isEnded: tournamentsTable.isEnded,
+        createdAt: tournamentsTable.createdAt,
+        updatedAt: tournamentsTable.updatedAt,
+      })
+      .from(tournamentParticipantsTable)
+      .innerJoin(
+        tournamentsTable,
+        eq(tournamentParticipantsTable.tournamentId, tournamentsTable.id)
+      )
+      .where(eq(tournamentParticipantsTable.userId, userId))
+      .orderBy(tournamentsTable.scheduledAt)
+      .execute();
+
+    return tournaments;
+  } catch (error) {
+    console.error("Error fetching participated tournaments:", error);
     throw error;
   }
 }
