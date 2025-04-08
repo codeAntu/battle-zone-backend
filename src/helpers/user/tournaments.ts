@@ -4,7 +4,7 @@ import {
   tournamentParticipantsTable,
   tournamentsTable,
   usersTable,
-  historyTable,
+  winningsTable,
 } from "../../drizzle/schema";
 
 export async function getAllUserTournaments(userId: number) {
@@ -39,7 +39,7 @@ export async function getTournamentById(userId: number, id: number) {
     if (isNaN(id) || id <= 0) {
       throw new Error("Invalid tournament ID provided");
     }
-    
+
     // Fetch the tournament details
     const tournament = await db
       .select()
@@ -69,11 +69,11 @@ export async function getTournamentById(userId: number, id: number) {
 
     // Check if the tournament has ended
     if (tournamentData.isEnded) {
-      // Fetch the winners from the historyTable
+      // Fetch the winners from the winningsTable
       const winners = await db
         .select()
-        .from(historyTable)
-        .where(eq(historyTable.tournamentId, id))
+        .from(winningsTable)
+        .where(eq(winningsTable.tournamentId, id))
         .execute();
 
       return {
@@ -254,36 +254,71 @@ export async function isUserParticipatedInTournament(
 export async function getParticipatedTournaments(userId: number) {
   try {
     // Get tournaments the user has participated in
+
+    console.log("Fetching participated tournaments for user ID:", userId);
     const tournaments = await db
       .select({
-        id: tournamentsTable.id,
-        adminId: tournamentsTable.adminId,
-        game: tournamentsTable.game,
-        name: tournamentsTable.name,
-        description: tournamentsTable.description,
-        roomId: tournamentsTable.roomId,
-        entryFee: tournamentsTable.entryFee,
-        prize: tournamentsTable.prize,
-        perKillPrize: tournamentsTable.perKillPrize,
-        maxParticipants: tournamentsTable.maxParticipants,
-        currentParticipants: tournamentsTable.currentParticipants,
-        scheduledAt: tournamentsTable.scheduledAt,
-        isEnded: tournamentsTable.isEnded,
-        createdAt: tournamentsTable.createdAt,
-        updatedAt: tournamentsTable.updatedAt,
+      id: tournamentsTable.id,
+      adminId: tournamentsTable.adminId,
+      game: tournamentsTable.game,
+      name: tournamentsTable.name,
+      description: tournamentsTable.description,
+      roomId: tournamentsTable.roomId,
+      entryFee: tournamentsTable.entryFee,
+      prize: tournamentsTable.prize,
+      perKillPrize: tournamentsTable.perKillPrize,
+      maxParticipants: tournamentsTable.maxParticipants,
+      currentParticipants: tournamentsTable.currentParticipants,
+      scheduledAt: tournamentsTable.scheduledAt,
+      isEnded: tournamentsTable.isEnded,
+      createdAt: tournamentsTable.createdAt,
+      updatedAt: tournamentsTable.updatedAt,
       })
       .from(tournamentParticipantsTable)
       .innerJoin(
-        tournamentsTable,
-        eq(tournamentParticipantsTable.tournamentId, tournamentsTable.id)
+      tournamentsTable,
+      eq(tournamentParticipantsTable.tournamentId, tournamentsTable.id)
       )
-      .where(eq(tournamentParticipantsTable.userId, userId))
+      .where(
+      and(
+        eq(tournamentParticipantsTable.userId, userId),
+        eq(tournamentsTable.isEnded, false)
+      )
+      )
       .orderBy(tournamentsTable.scheduledAt)
       .execute();
 
     return tournaments;
   } catch (error) {
     console.error("Error fetching participated tournaments:", error);
+    throw error;
+  }
+}
+
+export async function getUserWinnings(userId: number) {
+  try {
+    const winnings = await db
+      .select({
+        tournament: tournamentsTable,
+        winnings: winningsTable,
+      })
+      .from(winningsTable)
+      .innerJoin(
+        tournamentsTable,
+        eq(winningsTable.tournamentId, tournamentsTable.id)
+      )
+      .where(
+        and(
+          eq(winningsTable.userId, userId),
+          eq(tournamentsTable.isEnded, true)
+        )
+      )
+      .orderBy(tournamentsTable.scheduledAt)
+      .execute();
+
+    return winnings;
+  } catch (error) {
+    console.error("Error fetching user winnings:", error);
     throw error;
   }
 }

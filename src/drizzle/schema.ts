@@ -93,8 +93,8 @@ export const tournamentParticipantsTable = mysqlTable(
   }
 );
 
-// History table
-export const historyTable = mysqlTable("history", {
+// Winnings table
+export const winningsTable = mysqlTable("winnings", {
   id: serial().primaryKey(),
   userId: int()
     .notNull()

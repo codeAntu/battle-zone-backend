@@ -1,10 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import db from "../../config/db";
 import {
-  historyTable,
   tournamentParticipantsTable,
   tournamentsTable,
   usersTable,
+  winningsTable,
 } from "../../drizzle/schema";
 import { TournamentType, TournamentUpdateType } from "../../zod/tournaments";
 
@@ -186,9 +186,9 @@ export async function endTournament(
     const user = participant[0].user;
     const prizeAmount = tournament[0].prize;
 
-    // Record the winner in the history table
+    // Record the winner in the winnings table
     await db
-      .insert(historyTable)
+      .insert(winningsTable)
       .values({
         userId: userId,
         tournamentId: id,
