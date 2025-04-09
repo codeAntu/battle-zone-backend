@@ -1,5 +1,5 @@
 {
-  "name": "ludo-challenges-backend",
+  "name": "battle-zone-backend",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "db:generate": "drizzle-kit generate",
