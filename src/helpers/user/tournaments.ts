@@ -7,6 +7,28 @@ import {
   winningsTable,
 } from "../../drizzle/schema";
 
+// Helper function to sanitize tournament data by removing roomId unless user has participated or won
+const sanitizeTournamentData = (tournamentData: any, hasParticipated: boolean = false, isWinner: boolean = false) => {
+  if (!tournamentData) return tournamentData;
+
+  // Don't hide roomId if user has participated or is a winner
+  if (hasParticipated || isWinner) return tournamentData;
+
+  // If it's an object with a tournament property (like in some query results)
+  if (tournamentData.tournament) {
+    const { roomId, ...rest } = tournamentData.tournament;
+    return { ...tournamentData, tournament: rest };
+  }
+
+  // If it's a direct tournament object
+  if (tournamentData.roomId !== undefined) {
+    const { roomId, ...sanitizedData } = tournamentData;
+    return sanitizedData;
+  }
+
+  return tournamentData;
+};
+
 export async function getAllUserTournaments(userId: number) {
   try {
     const tournaments = await db
@@ -26,7 +48,15 @@ export async function getAllUserTournaments(userId: number) {
       .orderBy(tournamentsTable.scheduledAt)
       .execute();
 
-    return tournaments;
+    // For this function, user has participated in these tournaments
+    return tournaments.map(tournament => {
+      const { tournaments, ...rest } = tournament;
+      // User has participated in these tournaments
+      return {
+        ...rest,
+        tournaments: sanitizeTournamentData(tournaments, true)
+      };
+    });
   } catch (error) {
     console.error("Error fetching all user tournaments:", error);
     throw error;
@@ -66,6 +96,20 @@ export async function getTournamentById(userId: number, id: number) {
       .execute();
 
     const hasParticipated = participation && participation.length > 0;
+    
+    // Check if the user is a winner of this tournament
+    const winnerCheck = await db
+      .select()
+      .from(winningsTable)
+      .where(
+        and(
+          eq(winningsTable.tournamentId, id),
+          eq(winningsTable.userId, userId)
+        )
+      )
+      .execute();
+      
+    const isWinner = winnerCheck && winnerCheck.length > 0;
 
     // Check if the tournament has ended
     if (tournamentData.isEnded) {
@@ -77,15 +121,17 @@ export async function getTournamentById(userId: number, id: number) {
         .execute();
 
       return {
-        tournament: tournamentData,
+        tournament: sanitizeTournamentData(tournamentData, hasParticipated, isWinner),
         winners,
         hasParticipated,
+        isWinner,
       };
     }
 
     return {
-      tournament: tournamentData,
+      tournament: sanitizeTournamentData(tournamentData, hasParticipated, isWinner),
       hasParticipated,
+      isWinner,
       message: "Tournament is still ongoing",
     };
   } catch (error) {
@@ -121,7 +167,10 @@ export async function getUserTournamentsByName(
       )
       .execute();
 
-    return tournaments;
+    // User hasn't participated in these tournaments (that's part of the query filter)
+    return tournaments.map(item => ({
+      tournament: sanitizeTournamentData(item.tournament, false)
+    }));
   } catch (error) {
     console.error("Error fetching tournaments by game name:", error);
     throw error;
@@ -258,32 +307,32 @@ export async function getParticipatedTournaments(userId: number) {
     console.log("Fetching participated tournaments for user ID:", userId);
     const tournaments = await db
       .select({
-      id: tournamentsTable.id,
-      adminId: tournamentsTable.adminId,
-      game: tournamentsTable.game,
-      name: tournamentsTable.name,
-      description: tournamentsTable.description,
-      roomId: tournamentsTable.roomId,
-      entryFee: tournamentsTable.entryFee,
-      prize: tournamentsTable.prize,
-      perKillPrize: tournamentsTable.perKillPrize,
-      maxParticipants: tournamentsTable.maxParticipants,
-      currentParticipants: tournamentsTable.currentParticipants,
-      scheduledAt: tournamentsTable.scheduledAt,
-      isEnded: tournamentsTable.isEnded,
-      createdAt: tournamentsTable.createdAt,
-      updatedAt: tournamentsTable.updatedAt,
+        id: tournamentsTable.id,
+        adminId: tournamentsTable.adminId,
+        game: tournamentsTable.game,
+        name: tournamentsTable.name,
+        description: tournamentsTable.description,
+        roomId: tournamentsTable.roomId, // Include roomId for participated tournaments
+        entryFee: tournamentsTable.entryFee,
+        prize: tournamentsTable.prize,
+        perKillPrize: tournamentsTable.perKillPrize,
+        maxParticipants: tournamentsTable.maxParticipants,
+        currentParticipants: tournamentsTable.currentParticipants,
+        scheduledAt: tournamentsTable.scheduledAt,
+        isEnded: tournamentsTable.isEnded,
+        createdAt: tournamentsTable.createdAt,
+        updatedAt: tournamentsTable.updatedAt,
       })
       .from(tournamentParticipantsTable)
       .innerJoin(
-      tournamentsTable,
-      eq(tournamentParticipantsTable.tournamentId, tournamentsTable.id)
+        tournamentsTable,
+        eq(tournamentParticipantsTable.tournamentId, tournamentsTable.id)
       )
       .where(
-      and(
-        eq(tournamentParticipantsTable.userId, userId),
-        eq(tournamentsTable.isEnded, false)
-      )
+        and(
+          eq(tournamentParticipantsTable.userId, userId),
+          eq(tournamentsTable.isEnded, false)
+        )
       )
       .orderBy(tournamentsTable.scheduledAt)
       .execute();
@@ -316,7 +365,11 @@ export async function getUserWinnings(userId: number) {
       .orderBy(tournamentsTable.scheduledAt)
       .execute();
 
-    return winnings;
+    // User has participated in these tournaments and is a winner
+    return winnings.map(item => ({
+      tournament: sanitizeTournamentData(item.tournament, true, true),
+      winnings: item.winnings
+    }));
   } catch (error) {
     console.error("Error fetching user winnings:", error);
     throw error;
