@@ -13,10 +13,10 @@ export async function createTournament(adminId: number, data: TournamentType) {
     .insert(tournamentsTable)
     .values({
       adminId: adminId,
-      game: data.game as "PUBG" | "FREEFIRE",
+      game: data.game, 
       name: data.name,
       description: data.description || null,
-      roomId: String(data.roomId), // Convert to string instead of number
+      roomId: String(data.roomId), 
       entryFee: Number(data.entryFee),
       prize: Number(data.prize),
       perKillPrize: Number(data.perKillPrize),

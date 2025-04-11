@@ -4,7 +4,6 @@ import {
   check,
   datetime,
   int,
-  mysqlEnum,
   mysqlTable,
   timestamp,
   varchar
@@ -41,13 +40,27 @@ export const adminTable = mysqlTable("admin", {
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 
+// Games table to store game information
+export const gamesTable = mysqlTable("games", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar({ length: 100 }).notNull().unique(),
+  description: varchar({ length: 500 }),
+  icon: varchar({ length: 255 }),
+  thumbnail: varchar({ length: 255 }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+});
+
 // Tournaments table with combined datetime
 export const tournamentsTable = mysqlTable(
   "tournaments",
   {
     id: int("id").primaryKey().autoincrement(),
-    adminId: int("adminId").notNull().references(() => adminTable.id),
-    game: mysqlEnum("game", ["PUBG", "FREEFIRE"]).notNull(),
+    adminId: int("adminId")
+      .notNull()
+      .references(() => adminTable.id),
+    // game: mysqlEnum("game", ["PUBG", "FREEFIRE"]).notNull(),
+    game: varchar({ length: 255 }).references(() => gamesTable.name),
     name: varchar({ length: 255 }).notNull(),
     description: varchar({ length: 255 }),
     roomId: varchar({ length: 255 }).default("0"),
@@ -81,8 +94,12 @@ export const tournamentParticipantsTable = mysqlTable(
   "tournament_participants",
   {
     id: int("id").primaryKey().autoincrement(),
-    userId: int("userId").notNull().references(() => usersTable.id),
-    tournamentId: int("tournamentId").notNull().references(() => tournamentsTable.id),
+    userId: int("userId")
+      .notNull()
+      .references(() => usersTable.id),
+    tournamentId: int("tournamentId")
+      .notNull()
+      .references(() => tournamentsTable.id),
     joinedAt: timestamp("joined_at").notNull().defaultNow(),
   }
 );
@@ -90,8 +107,12 @@ export const tournamentParticipantsTable = mysqlTable(
 // Winnings table with corrected reference type
 export const winningsTable = mysqlTable("winnings", {
   id: int("id").primaryKey().autoincrement(),
-  userId: int("userId").notNull().references(() => usersTable.id),
-  tournamentId: int("tournamentId").notNull().references(() => tournamentsTable.id),
+  userId: int("userId")
+    .notNull()
+    .references(() => usersTable.id),
+  tournamentId: int("tournamentId")
+    .notNull()
+    .references(() => tournamentsTable.id),
   amount: int("amount").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -99,8 +120,12 @@ export const winningsTable = mysqlTable("winnings", {
 // Withdraw table with corrected reference type
 export const withdrawTable = mysqlTable("withdraw", {
   id: int("id").primaryKey().autoincrement(),
-  userId: int("userId").notNull().references(() => usersTable.id),
-  tournamentId: int("tournamentId").notNull().references(() => tournamentsTable.id),
+  userId: int("userId")
+    .notNull()
+    .references(() => usersTable.id),
+  tournamentId: int("tournamentId")
+    .notNull()
+    .references(() => tournamentsTable.id),
   amount: int("amount").notNull(),
   status: varchar({ length: 255 }).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -109,10 +134,12 @@ export const withdrawTable = mysqlTable("withdraw", {
 // Deposit table with corrected reference type
 export const depositTable = mysqlTable("deposit", {
   id: int("id").primaryKey().autoincrement(),
-  userId: int("userId").notNull().references(() => usersTable.id, {
-    onDelete: "cascade",
-    onUpdate: "cascade",
-  }),
+  userId: int("userId")
+    .notNull()
+    .references(() => usersTable.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
   amount: int("amount").notNull(),
   status: varchar({ length: 255 }).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -121,8 +148,12 @@ export const depositTable = mysqlTable("deposit", {
 // Withdraw history table with corrected reference type
 export const withdrawHistoryTable = mysqlTable("withdraw_history", {
   id: int("id").primaryKey().autoincrement(),
-  adminId: int("adminId").notNull().references(() => adminTable.id),
-  withdrawId: int("withdrawId").notNull().references(() => withdrawTable.id),
+  adminId: int("adminId")
+    .notNull()
+    .references(() => adminTable.id),
+  withdrawId: int("withdrawId")
+    .notNull()
+    .references(() => withdrawTable.id),
   action: varchar({ length: 255 }).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

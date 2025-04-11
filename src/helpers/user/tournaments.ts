@@ -142,7 +142,7 @@ export async function getTournamentById(userId: number, id: number) {
 
 export async function getUserTournamentsByName(
   userId: number,
-  gameName: string
+  game: string
 ) {
   try {
     const tournaments = await db
@@ -159,7 +159,7 @@ export async function getUserTournamentsByName(
       )
       .where(
         and(
-          eq(tournamentsTable.game, gameName as "PUBG" | "FREEFIRE"),
+          eq(tournamentsTable.game, game), // Using game consistently
           eq(tournamentsTable.isEnded, false),
           isNull(tournamentParticipantsTable.id),
           gt(tournamentsTable.scheduledAt, new Date())
@@ -309,10 +309,10 @@ export async function getParticipatedTournaments(userId: number) {
       .select({
         id: tournamentsTable.id,
         adminId: tournamentsTable.adminId,
-        game: tournamentsTable.game,
+        game: tournamentsTable.game, // Changed from gameName to game
         name: tournamentsTable.name,
         description: tournamentsTable.description,
-        roomId: tournamentsTable.roomId, // Include roomId for participated tournaments
+        roomId: tournamentsTable.roomId,
         entryFee: tournamentsTable.entryFee,
         prize: tournamentsTable.prize,
         perKillPrize: tournamentsTable.perKillPrize,
