@@ -9,19 +9,15 @@ game.get("/list", async (c) => {
         id: 1,
         name: "PUBG",
         description: "PlayerUnknown's Battlegrounds",
-        image:
-          "https://www.financialexpress.com/wp-content/uploads/2025/03/PUBG-MOBILE1.jpg",
-        iconUrl:
-          "https://www.financialexpress.com/wp-content/uploads/2025/03/PUBG-MOBILE1.jpg",
+        image: "/games/BGMI/image.png",
+        iconUrl: "/games/BGMI/icon.png",
       },
       {
         id: 2,
         name: "FREEFIRE",
         description: "Garena Free Fire",
-        iconUrl:
-          "https://www.financialexpress.com/wp-content/uploads/2025/03/PUBG-MOBILE1.jpg",
-        image:
-          "https://www.financialexpress.com/wp-content/uploads/2025/03/PUBG-MOBILE1.jpg",
+        image: "/games/FREEFIRE/image.png",
+        iconUrl: "/games/FREEFIRE/icon.png",
       },
     ];
     return c.json({
