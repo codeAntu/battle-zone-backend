@@ -7,22 +7,18 @@ import {
   winningsTable,
 } from "../../drizzle/schema";
 
-// Helper function to sanitize tournament data by removing roomId unless user has participated or won
 const sanitizeTournamentData = (tournamentData: any, hasParticipated: boolean = false, isWinner: boolean = false) => {
   if (!tournamentData) return tournamentData;
 
-  // Don't hide roomId if user has participated or is a winner
   if (hasParticipated || isWinner) return tournamentData;
 
-  // If it's an object with a tournament property (like in some query results)
   if (tournamentData.tournament) {
-    const { roomId, ...rest } = tournamentData.tournament;
+    const { roomId, roomPassword, ...rest } = tournamentData.tournament;
     return { ...tournamentData, tournament: rest };
   }
 
-  // If it's a direct tournament object
-  if (tournamentData.roomId !== undefined) {
-    const { roomId, ...sanitizedData } = tournamentData;
+  if (tournamentData.roomId !== undefined || tournamentData.roomPassword !== undefined) {
+    const { roomId, roomPassword, ...sanitizedData } = tournamentData;
     return sanitizedData;
   }
 
@@ -48,10 +44,8 @@ export async function getAllUserTournaments(userId: number) {
       .orderBy(tournamentsTable.scheduledAt)
       .execute();
 
-    // For this function, user has participated in these tournaments
     return tournaments.map(tournament => {
       const { tournaments, ...rest } = tournament;
-      // User has participated in these tournaments
       return {
         ...rest,
         tournaments: sanitizeTournamentData(tournaments, true)
@@ -65,12 +59,10 @@ export async function getAllUserTournaments(userId: number) {
 
 export async function getTournamentById(userId: number, id: number) {
   try {
-    // Validate that id is a valid number
     if (isNaN(id) || id <= 0) {
       throw new Error("Invalid tournament ID provided");
     }
 
-    // Fetch the tournament details
     const tournament = await db
       .select()
       .from(tournamentsTable)
@@ -83,7 +75,6 @@ export async function getTournamentById(userId: number, id: number) {
 
     const tournamentData = tournament[0];
 
-    // Check if the user has participated in the tournament
     const participation = await db
       .select()
       .from(tournamentParticipantsTable)
@@ -96,8 +87,7 @@ export async function getTournamentById(userId: number, id: number) {
       .execute();
 
     const hasParticipated = participation && participation.length > 0;
-    
-    // Check if the user is a winner of this tournament
+
     const winnerCheck = await db
       .select()
       .from(winningsTable)
@@ -108,12 +98,10 @@ export async function getTournamentById(userId: number, id: number) {
         )
       )
       .execute();
-      
+
     const isWinner = winnerCheck && winnerCheck.length > 0;
 
-    // Check if the tournament has ended
     if (tournamentData.isEnded) {
-      // Fetch the winners from the winningsTable
       const winners = await db
         .select()
         .from(winningsTable)
@@ -159,7 +147,7 @@ export async function getUserTournamentsByName(
       )
       .where(
         and(
-          eq(tournamentsTable.game, game), // Using game consistently
+          eq(tournamentsTable.game, game),
           eq(tournamentsTable.isEnded, false),
           isNull(tournamentParticipantsTable.id),
           gt(tournamentsTable.scheduledAt, new Date())
@@ -167,7 +155,6 @@ export async function getUserTournamentsByName(
       )
       .execute();
 
-    // User hasn't participated in these tournaments (that's part of the query filter)
     return tournaments.map(item => ({
       tournament: sanitizeTournamentData(item.tournament, false)
     }));
@@ -179,7 +166,10 @@ export async function getUserTournamentsByName(
 
 export async function participateInTournament(
   tournamentId: number,
-  userId: number
+  userId: number,
+  playerUsername: string,
+  playerUserId: string,
+  playerLevel: number
 ) {
   try {
     const tournament = await db
@@ -226,7 +216,6 @@ export async function participateInTournament(
       throw new Error(`Tournament has reached its maximum participants`);
     }
 
-    // check balance of user
     const user = await db
       .select()
       .from(usersTable)
@@ -246,6 +235,10 @@ export async function participateInTournament(
       );
     }
 
+    if (playerLevel < 30) {
+      throw new Error("Player level must be at least 30");
+    }
+
     await db
       .update(usersTable)
       .set({
@@ -259,6 +252,9 @@ export async function participateInTournament(
       .values({
         tournamentId,
         userId,
+        playerUsername,
+        playerUserId,
+        playerLevel,
       })
       .execute();
 
@@ -270,7 +266,16 @@ export async function participateInTournament(
       .where(eq(tournamentsTable.id, tournamentId))
       .execute();
 
-    return participantInsert;
+    const updatedTournament = await db
+      .select()
+      .from(tournamentsTable)
+      .where(eq(tournamentsTable.id, tournamentId))
+      .execute();
+
+    return {
+      participantInsert,
+      tournament: updatedTournament[0]
+    };
   } catch (error) {
     console.error("Error participating in tournament:", error);
     throw error;
@@ -302,17 +307,15 @@ export async function isUserParticipatedInTournament(
 
 export async function getParticipatedTournaments(userId: number) {
   try {
-    // Get tournaments the user has participated in
-
-    console.log("Fetching participated tournaments for user ID:", userId);
     const tournaments = await db
       .select({
         id: tournamentsTable.id,
         adminId: tournamentsTable.adminId,
-        game: tournamentsTable.game, // Changed from gameName to game
+        game: tournamentsTable.game,
         name: tournamentsTable.name,
         description: tournamentsTable.description,
         roomId: tournamentsTable.roomId,
+        roomPassword: tournamentsTable.roomPassword,
         entryFee: tournamentsTable.entryFee,
         prize: tournamentsTable.prize,
         perKillPrize: tournamentsTable.perKillPrize,
@@ -365,7 +368,6 @@ export async function getUserWinnings(userId: number) {
       .orderBy(tournamentsTable.scheduledAt)
       .execute();
 
-    // User has participated in these tournaments and is a winner
     return winnings.map(item => ({
       tournament: sanitizeTournamentData(item.tournament, true, true),
       winnings: item.winnings

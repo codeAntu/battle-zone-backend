@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const tournamentsValidation = z
   .object({
-    game: z.enum(["PUBG", "FREEFIRE"]),
+    game: z.enum(["BGMI", "FREEFIRE"]),
     name: z.string().min(1).max(50),
     description: z.string().max(255).optional(),
     roomId: z
@@ -12,6 +12,7 @@ export const tournamentsValidation = z
       .refine((val) => !isNaN(Number(val)), {
         message: "Room ID must be a valid numeric string",
       }),
+    roomPassword: z.string().max(255).optional(),
     entryFee: z.number().int().nonnegative(),
     prize: z.number().int().nonnegative(),
     perKillPrize: z.number().int().nonnegative(),
@@ -40,6 +41,7 @@ export const tournamentUpdateValidation = z.object({
     .refine((val) => !isNaN(Number(val)), {
       message: "Room ID must be a valid numeric string",
     }),
+  roomPassword: z.string().max(255).optional(),
 });
 
 // Infer the type

@@ -6,7 +6,7 @@ import {
   int,
   mysqlTable,
   timestamp,
-  varchar
+  varchar,
 } from "drizzle-orm/mysql-core";
 
 // Users table with constraint
@@ -59,11 +59,11 @@ export const tournamentsTable = mysqlTable(
     adminId: int("adminId")
       .notNull()
       .references(() => adminTable.id),
-    // game: mysqlEnum("game", ["PUBG", "FREEFIRE"]).notNull(),
-    game: varchar({ length: 255 }).references(() => gamesTable.name),
+    game: varchar({ length: 255 }),
     name: varchar({ length: 255 }).notNull(),
     description: varchar({ length: 255 }),
     roomId: varchar({ length: 255 }).default("0"),
+    roomPassword: varchar({ length: 255 }),
     entryFee: int("entryFee").notNull(),
     prize: int("prize").notNull(),
     perKillPrize: int("perKillPrize").notNull(),
@@ -89,7 +89,7 @@ export const tournamentsTable = mysqlTable(
   ]
 );
 
-// Tournament participants table with corrected reference type
+// Tournament participants table with player information
 export const tournamentParticipantsTable = mysqlTable(
   "tournament_participants",
   {
@@ -100,6 +100,9 @@ export const tournamentParticipantsTable = mysqlTable(
     tournamentId: int("tournamentId")
       .notNull()
       .references(() => tournamentsTable.id),
+    playerUsername: varchar({ length: 255 }).notNull(), // Game username
+    playerUserId: varchar({ length: 255 }).notNull(),   // Game user ID
+    playerLevel: int("playerLevel").notNull(),          // Add player level
     joinedAt: timestamp("joined_at").notNull().defaultNow(),
   }
 );

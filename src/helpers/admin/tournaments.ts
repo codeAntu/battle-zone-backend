@@ -9,23 +9,29 @@ import {
 import { TournamentType, TournamentUpdateType } from "../../zod/tournaments";
 
 export async function createTournament(adminId: number, data: TournamentType) {
-  const result = await db
-    .insert(tournamentsTable)
-    .values({
-      adminId: adminId,
-      game: data.game, 
-      name: data.name,
-      description: data.description || null,
-      roomId: String(data.roomId), 
-      entryFee: Number(data.entryFee),
-      prize: Number(data.prize),
-      perKillPrize: Number(data.perKillPrize),
-      maxParticipants: Number(data.maxParticipants),
-      scheduledAt: new Date(data.scheduledAt),
-    })
-    .$returningId();
+  try {
+    const result = await db
+      .insert(tournamentsTable)
+      .values({
+        adminId: adminId,
+        game: data.game,
+        name: data.name,
+        description: data.description || null,
+        roomId: String(data.roomId),
+        roomPassword: data.roomPassword || null,
+        entryFee: Number(data.entryFee),
+        prize: Number(data.prize),
+        perKillPrize: Number(data.perKillPrize),
+        maxParticipants: Number(data.maxParticipants),
+        scheduledAt: new Date(data.scheduledAt),
+      })
+      .$returningId();
 
-  return result[0].id;
+    return result[0].id;
+  } catch (error) {
+    console.error("Error creating tournament:", error);
+    throw error;
+  }
 }
 
 export async function updateTournamentRoomId(
@@ -42,6 +48,7 @@ export async function updateTournamentRoomId(
       .update(tournamentsTable)
       .set({
         roomId: String(data.roomId), // Convert to string instead of number
+        roomPassword: data.roomPassword || undefined, // Add roomPassword update
       })
       .where(
         and(eq(tournamentsTable.adminId, adminId), eq(tournamentsTable.id, id))

@@ -1,3 +1,4 @@
+import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import {
   getAllUserTournaments,
@@ -10,6 +11,7 @@ import {
 } from "../../helpers/user/tournaments";
 import { isUser } from "../../middleware/auth";
 import { getUser } from "../../utils/context";
+import { participationValidator } from "../../zod/participation";
 
 const tournamentApi = new Hono().basePath("/tournaments");
 
@@ -62,7 +64,7 @@ tournamentApi.get("/participated", async (c) => {
 tournamentApi.get("/winnings", async (c) => {
   try {
     const user = getUser(c);
-    
+
     const winnings = await getUserWinnings(user.id);
     if (!winnings || winnings.length === 0) {
       return c.json({ message: "No tournament winnings found" }, 404);
@@ -105,30 +107,43 @@ tournamentApi.get("/isParticipated/:tournamentId", async (c) => {
   }
 });
 
-tournamentApi.post("/participate/:tournamentId", async (c) => {
-  try {
-    const user = getUser(c);
-    const tournamentId = c.req.param("tournamentId");
-    if (!tournamentId) {
-      return c.json({ error: "Tournament ID is required" }, 400);
+tournamentApi.post(
+  "/participate/:tournamentId",
+  zValidator("json", participationValidator),
+  async (c) => {
+    try {
+      const user = getUser(c);
+      const tournamentId = c.req.param("tournamentId");
+      if (!tournamentId) {
+        return c.json({ error: "Tournament ID is required" }, 400);
+      }
+
+      // The body is now validated by zValidator
+      // Extract all required fields including playerLevel
+      const { playerUsername, playerUserId, playerLevel } = await c.req.valid("json");
+
+      const participate = await participateInTournament(
+        Number(tournamentId),
+        user.id,
+        playerUsername,
+        playerUserId,
+        playerLevel
+      );
+
+      return c.json({
+        message: "Successfully participated in the tournament",
+        participate,
+      });
+    } catch (error: unknown) {
+      console.error("Error participating in tournament:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to participate in tournament";
+      return c.json({ error: errorMessage }, 500);
     }
-    const participate = await participateInTournament(
-      Number(tournamentId),
-      user.id
-    );
-    return c.json({
-      message: "Successfully participated in the tournament",
-      participate,
-    });
-  } catch (error: unknown) {
-    console.error("Error participating in tournament:", error);
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : "Failed to participate in tournament";
-    return c.json({ error: errorMessage }, 500);
   }
-});
+);
 
 tournamentApi.get("/game/:name", async (c) => {
   try {
