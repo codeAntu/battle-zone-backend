@@ -9,6 +9,7 @@ import {
   varchar,
   mysqlEnum,
 } from "drizzle-orm/mysql-core";
+import transaction from "../api/user/transection";
 
 // Users table with constraint
 export const usersTable = mysqlTable(
@@ -102,8 +103,8 @@ export const tournamentParticipantsTable = mysqlTable(
       .notNull()
       .references(() => tournamentsTable.id),
     playerUsername: varchar({ length: 255 }).notNull(), // Game username
-    playerUserId: varchar({ length: 255 }).notNull(),   // Game user ID
-    playerLevel: int("playerLevel").notNull(),          // Add player level
+    playerUserId: varchar({ length: 255 }).notNull(), // Game user ID
+    playerLevel: int("playerLevel").notNull(), // Add player level
     joinedAt: timestamp("joined_at").notNull().defaultNow(),
   }
 );
@@ -122,22 +123,19 @@ export const winningsTable = mysqlTable("winnings", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-// Withdraw table with corrected reference type
-export const withdrawTable = mysqlTable("withdraw", {
+export const depositTable = mysqlTable("deposit", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("userId")
     .notNull()
     .references(() => usersTable.id),
-  tournamentId: int("tournamentId")
-    .notNull()
-    .references(() => tournamentsTable.id),
   amount: int("amount").notNull(),
   status: varchar({ length: 255 }).notNull(),
+  transactionId: int("transactionId").notNull(),
+  upiId: varchar({ length: 255 }).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-// Deposit table with corrected reference type
-export const depositTable = mysqlTable("deposit", {
+export const withdrawTable = mysqlTable("withdraw", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("userId")
     .notNull()
@@ -146,19 +144,20 @@ export const depositTable = mysqlTable("deposit", {
       onUpdate: "cascade",
     }),
   amount: int("amount").notNull(),
+  upiId: varchar({ length: 255 }).notNull(),
   status: varchar({ length: 255 }).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Withdraw history table with corrected reference type
-export const withdrawHistoryTable = mysqlTable("withdraw_history", {
-  id: int("id").primaryKey().autoincrement(),
-  adminId: int("adminId")
-    .notNull()
-    .references(() => adminTable.id),
-  withdrawId: int("withdrawId")
-    .notNull()
-    .references(() => withdrawTable.id),
-  action: varchar({ length: 255 }).notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+// export const withdrawHistoryTable = mysqlTable("withdraw_history", {
+//   id: int("id").primaryKey().autoincrement(),
+//   adminId: int("adminId")
+//     .notNull()
+//     .references(() => adminTable.id),
+//   withdrawId: int("withdrawId")
+//     .notNull()
+//     .references(() => withdrawTable.id),
+//   action: varchar({ length: 255 }).notNull(),
+//   createdAt: timestamp("created_at").notNull().defaultNow(),
+// });
