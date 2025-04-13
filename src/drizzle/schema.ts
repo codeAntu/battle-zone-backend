@@ -7,6 +7,7 @@ import {
   mysqlTable,
   timestamp,
   varchar,
+  mysqlEnum,
 } from "drizzle-orm/mysql-core";
 
 // Users table with constraint
@@ -117,6 +118,7 @@ export const winningsTable = mysqlTable("winnings", {
     .notNull()
     .references(() => tournamentsTable.id),
   amount: int("amount").notNull(),
+  type: mysqlEnum("type", ["winnings", "kill"]).notNull().default("winnings"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -9,12 +9,14 @@ import {
   getMyTournaments,
   getTournamentParticipants,
   updateTournamentRoomId,
+  awardKillMoney,
 } from "../../helpers/admin/tournaments";
 import { isAdmin } from "../../middleware/auth";
 import { getAdmin } from "../../utils/context";
 import {
   tournamentsValidation,
   tournamentUpdateValidation,
+  killMoneyValidation, // Add this import
 } from "../../zod/tournaments";
 
 const tournamentApi = new Hono().basePath("/tournaments");
@@ -70,8 +72,6 @@ tournamentApi.get("/current", async (c) => {
     return c.json({ error: errorMessage }, 500);
   }
 });
-
-// get current tournament
 
 tournamentApi.get("/:id", async (c) => {
   try {
@@ -132,7 +132,11 @@ tournamentApi.post(
       const id = Number(c.req.param("id"));
       const data = await c.req.json();
       const result = await updateTournamentRoomId(admin.id, id, data);
-      return c.json({ message: "Tournament updated successfully", id, result });
+      return c.json({
+        message: "Tournament updated successfully",
+        id,
+        result,
+      });
     } catch (error: unknown) {
       console.error("Error updating tournament:", error);
       const errorMessage =
@@ -164,7 +168,35 @@ tournamentApi.post("/end/:id", async (c) => {
   }
 });
 
-tournamentApi.get("participants/:id", async (c) => {
+tournamentApi.post(
+  "/kills/:id",
+  zValidator("json", killMoneyValidation),
+  async (c) => {
+    try {
+      const admin = getAdmin(c);
+      const id = Number(c.req.param("id"));
+      const { userId, kills } = await c.req.json();
+
+      const result = await awardKillMoney(admin.id, id, userId, kills);
+
+      return c.json({
+        message: "Kill money awarded successfully",
+        result,
+      });
+    } catch (error: unknown) {
+      console.error("Error awarding kill money:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to award kill money";
+
+      if (errorMessage.includes("not found")) {
+        return c.json({ error: errorMessage }, 404);
+      }
+      return c.json({ error: errorMessage }, 500);
+    }
+  }
+);
+
+tournamentApi.get("/participants/:id", async (c) => {
   try {
     const admin = getAdmin(c);
     const id = Number(c.req.param("id"));
@@ -188,27 +220,5 @@ tournamentApi.get("participants/:id", async (c) => {
     return c.json({ error: errorMessage }, 500);
   }
 });
-
-// tournamentApi.delete("/delete/:id", async (c) => {
-//   try {
-//     const admin = getAdmin(c);
-//     const id = c.req.param("id");
-
-//     console.log(`Admin ${admin.id} deleting tournament ${id}`);
-
-//     // Implement your delete logic here
-
-//     return c.json({
-//       message: "Delete Tournament",
-//       id,
-//       adminId: admin.id,
-//     });
-//   } catch (error: unknown) {
-//     console.error("Error deleting tournament:", error);
-//     const errorMessage =
-//       error instanceof Error ? error.message : "Failed to delete tournament";
-//     return c.json({ error: errorMessage }, 500);
-//   }
-// });
 
 export default tournamentApi;

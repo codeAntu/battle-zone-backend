@@ -44,7 +44,22 @@ export const tournamentUpdateValidation = z.object({
   roomPassword: z.string().max(255).optional(),
 });
 
+// Kill money validation schema
+export const killMoneyValidation = z.object({
+  userId: z.number({
+    required_error: "User ID is required",
+    invalid_type_error: "User ID must be a number",
+  }).positive("User ID must be positive"),
+  
+  kills: z.number({
+    required_error: "Kills count is required", 
+    invalid_type_error: "Kills count must be a number",
+  }).min(0, "Kills count cannot be negative").max(100, "Kills count cannot exceed 100"),
+});
+
 // Infer the type
 export type TournamentType = z.infer<typeof tournamentsValidation>;
 
 export type TournamentUpdateType = z.infer<typeof tournamentUpdateValidation>;
+
+export type KillMoneyType = z.infer<typeof killMoneyValidation>;

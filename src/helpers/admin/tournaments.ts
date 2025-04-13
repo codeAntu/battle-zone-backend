@@ -139,7 +139,6 @@ export async function endTournament(
   userId: number
 ) {
   try {
-    // Input validation
     if (isNaN(id) || id <= 0) {
       throw new Error(`Invalid tournament ID: ${id}`);
     }
@@ -148,7 +147,6 @@ export async function endTournament(
       throw new Error(`Invalid user ID: ${userId}`);
     }
 
-    // First check if the tournament exists and belongs to this admin
     const tournament = await db
       .select()
       .from(tournamentsTable)
@@ -156,7 +154,7 @@ export async function endTournament(
         and(
           eq(tournamentsTable.adminId, adminId),
           eq(tournamentsTable.id, id),
-          eq(tournamentsTable.isEnded, false) // Ensure tournament is not already ended
+          eq(tournamentsTable.isEnded, false) 
         )
       )
       .execute();
@@ -165,7 +163,6 @@ export async function endTournament(
       throw new Error(`Tournament with ID ${id} not found or already ended`);
     }
 
-    // Verify the userId exists and participated in the tournament
     const participant = await db
       .select({
         participantId: tournamentParticipantsTable.id,
@@ -193,7 +190,6 @@ export async function endTournament(
     const user = participant[0].user;
     const prizeAmount = tournament[0].prize;
 
-    // Record the winner in the winnings table
     await db
       .insert(winningsTable)
       .values({
@@ -203,7 +199,6 @@ export async function endTournament(
       })
       .execute();
 
-    // Update user balance with the prize amount
     await db
       .update(usersTable)
       .set({
@@ -212,7 +207,6 @@ export async function endTournament(
       .where(eq(usersTable.id, userId))
       .execute();
 
-    // Update tournament to ended status
     await db
       .update(tournamentsTable)
       .set({
@@ -223,7 +217,6 @@ export async function endTournament(
       )
       .execute();
 
-    // Get the updated tournament
     const updatedTournament = await db
       .select()
       .from(tournamentsTable)
@@ -262,7 +255,6 @@ export async function getMyCurrentTournaments(adminId: number) {
 
 export async function getTournamentParticipants(adminId: number, id: number) {
   try {
-    // check if tournament belongs to admin
     const tournament = await db
       .select()
       .from(tournamentsTable)
@@ -282,6 +274,9 @@ export async function getTournamentParticipants(adminId: number, id: number) {
         name: usersTable.name,
         email: usersTable.email,
         userId: usersTable.id,
+        playerUsername: tournamentParticipantsTable.playerUsername,
+        playerUserId: tournamentParticipantsTable.playerUserId,
+        playerLevel: tournamentParticipantsTable.playerLevel,
       })
       .from(tournamentParticipantsTable)
       .innerJoin(
@@ -294,6 +289,98 @@ export async function getTournamentParticipants(adminId: number, id: number) {
     return participants;
   } catch (error) {
     console.error("Error fetching tournament participants:", error);
+    throw error;
+  }
+}
+
+export async function awardKillMoney(
+  adminId: number,
+  tournamentId: number,
+  userId: number,
+  kills: number
+) {
+  try {
+    if (isNaN(tournamentId) || tournamentId <= 0) {
+      throw new Error(`Invalid tournament ID: ${tournamentId}`);
+    }
+
+    if (isNaN(userId) || userId <= 0) {
+      throw new Error(`Invalid user ID: ${userId}`);
+    }
+
+    if (isNaN(kills) || kills < 0) {
+      throw new Error(`Invalid kill count: ${kills}`);
+    }
+
+    const tournament = await db
+      .select()
+      .from(tournamentsTable)
+      .where(
+        and(
+          eq(tournamentsTable.adminId, adminId),
+          eq(tournamentsTable.id, tournamentId)
+        )
+      )
+      .execute();
+
+    if (!tournament.length) {
+      throw new Error(`Tournament with ID ${tournamentId} not found for this admin`);
+    }
+
+    const perKillPrize = tournament[0].perKillPrize;
+    const killReward = perKillPrize * kills;
+
+    const participant = await db
+      .select({
+        participantId: tournamentParticipantsTable.id,
+        user: usersTable,
+      })
+      .from(tournamentParticipantsTable)
+      .innerJoin(
+        usersTable,
+        eq(tournamentParticipantsTable.userId, usersTable.id)
+      )
+      .where(
+        and(
+          eq(tournamentParticipantsTable.tournamentId, tournamentId),
+          eq(tournamentParticipantsTable.userId, userId)
+        )
+      )
+      .execute();
+
+    if (!participant.length) {
+      throw new Error(
+        `User with ID ${userId} is not a participant in this tournament`
+      );
+    }
+
+    const user = participant[0].user;
+
+    await db
+      .insert(winningsTable)
+      .values({
+        userId: userId,
+        tournamentId: tournamentId,
+        amount: killReward,
+      })
+      .execute();
+
+    await db
+      .update(usersTable)
+      .set({
+        balance: user.balance + killReward,
+      })
+      .where(eq(usersTable.id, userId))
+      .execute();
+
+    return { 
+      userId,
+      kills,
+      killReward,
+      success: true
+    };
+  } catch (error) {
+    console.error("Error awarding kill money:", error);
     throw error;
   }
 }
