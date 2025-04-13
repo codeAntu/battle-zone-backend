@@ -7,7 +7,7 @@ import {
   winningsTable,
   historyTable,
 } from "../../drizzle/schema";
-import { TournamentType, TournamentUpdateType } from "../../zod/tournaments";
+import { TournamentType, TournamentUpdateType, TournamentEditType } from "../../zod/tournaments";
 
 export async function createTournament(adminId: number, data: TournamentType) {
   try {
@@ -417,6 +417,122 @@ export async function awardKillMoney(
     };
   } catch (error) {
     console.error("Error awarding kill money:", error);
+    throw error;
+  }
+}
+
+export async function deleteTournament(adminId: number, id: number) {
+  try {
+    if (isNaN(id) || id <= 0) {
+      throw new Error(`Invalid tournament ID: ${id}`);
+    }
+
+    // Check if tournament exists and belongs to the admin
+    const tournament = await db
+      .select()
+      .from(tournamentsTable)
+      .where(
+        and(eq(tournamentsTable.adminId, adminId), eq(tournamentsTable.id, id))
+      )
+      .execute();
+
+    if (!tournament || tournament.length === 0) {
+      throw new Error(`Tournament with ID ${id} not found for this admin`);
+    }
+
+    // Check if tournament has participants
+    const participants = await db
+      .select()
+      .from(tournamentParticipantsTable)
+      .where(eq(tournamentParticipantsTable.tournamentId, id))
+      .execute();
+
+    if (participants && participants.length > 0) {
+      throw new Error(`Cannot delete tournament with ${participants.length} participants`);
+    }
+
+    // Delete tournament if no participants
+    await db
+      .delete(tournamentsTable)
+      .where(
+        and(eq(tournamentsTable.adminId, adminId), eq(tournamentsTable.id, id))
+      )
+      .execute();
+
+    return { success: true, message: "Tournament deleted successfully" };
+  } catch (error) {
+    console.error("Error deleting tournament:", error);
+    throw error;
+  }
+}
+
+export async function editTournament(
+  adminId: number,
+  id: number,
+  data: TournamentEditType
+) {
+  try {
+    if (isNaN(id) || id <= 0) {
+      throw new Error(`Invalid tournament ID: ${id}`);
+    }
+
+    // Check if tournament exists and belongs to the admin
+    const tournament = await db
+      .select()
+      .from(tournamentsTable)
+      .where(
+        and(eq(tournamentsTable.adminId, adminId), eq(tournamentsTable.id, id))
+      )
+      .execute();
+
+    if (!tournament || tournament.length === 0) {
+      throw new Error(`Tournament with ID ${id} not found for this admin`);
+    }
+
+    // Check if the tournament has already ended
+    if (tournament[0].isEnded) {
+      throw new Error(`Cannot edit tournament that has already ended`);
+    }
+
+    // Check if participants > new maxParticipants
+    if (data.maxParticipants && tournament[0].currentParticipants > data.maxParticipants) {
+      throw new Error(`Cannot reduce max participants below current participant count (${tournament[0].currentParticipants})`);
+    }
+
+    // Create update object with only the provided fields
+    const updateData: any = {};
+    if (data.game) updateData.game = data.game;
+    if (data.name) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.roomId) updateData.roomId = String(data.roomId);
+    if (data.roomPassword !== undefined) updateData.roomPassword = data.roomPassword;
+    if (data.entryFee !== undefined) updateData.entryFee = data.entryFee;
+    if (data.prize !== undefined) updateData.prize = data.prize;
+    if (data.perKillPrize !== undefined) updateData.perKillPrize = data.perKillPrize;
+    if (data.maxParticipants) updateData.maxParticipants = data.maxParticipants;
+    if (data.scheduledAt) updateData.scheduledAt = new Date(data.scheduledAt);
+
+    // Update tournament
+    await db
+      .update(tournamentsTable)
+      .set(updateData)
+      .where(
+        and(eq(tournamentsTable.adminId, adminId), eq(tournamentsTable.id, id))
+      )
+      .execute();
+
+    // Get the updated tournament
+    const updatedTournament = await db
+      .select()
+      .from(tournamentsTable)
+      .where(
+        and(eq(tournamentsTable.adminId, adminId), eq(tournamentsTable.id, id))
+      )
+      .execute();
+
+    return updatedTournament[0];
+  } catch (error) {
+    console.error("Error editing tournament:", error);
     throw error;
   }
 }

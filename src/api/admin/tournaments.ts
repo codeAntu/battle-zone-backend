@@ -2,6 +2,8 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import {
   createTournament,
+  deleteTournament,
+  editTournament,
   endTournament,
   getMyCurrentTournaments,
   getMyTournamentById,
@@ -16,7 +18,8 @@ import { getAdmin } from "../../utils/context";
 import {
   tournamentsValidation,
   tournamentUpdateValidation,
-  killMoneyValidation, 
+  tournamentEditValidation,
+  killMoneyValidation,
 } from "../../zod/tournaments";
 
 const tournamentApi = new Hono().basePath("/tournaments");
@@ -150,6 +153,43 @@ tournamentApi.post(
   }
 );
 
+tournamentApi.post(
+  "/edit/:id",
+  zValidator("json", tournamentEditValidation),
+  async (c) => {
+    try {
+      const admin = getAdmin(c);
+      const id = Number(c.req.param("id"));
+      const data = await c.req.json();
+
+      const updatedTournament = await editTournament(admin.id, id, data);
+
+      return c.json({
+        message: "Tournament edited successfully",
+        tournament: updatedTournament,
+      });
+    } catch (error: unknown) {
+      console.error("Error editing tournament:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to edit tournament";
+
+      if (errorMessage.includes("max participants")) {
+        return c.json({ error: errorMessage }, 400);
+      }
+
+      if (errorMessage.includes("already ended")) {
+        return c.json({ error: errorMessage }, 400);
+      }
+
+      if (errorMessage.includes("not found")) {
+        return c.json({ error: errorMessage }, 404);
+      }
+
+      return c.json({ error: errorMessage }, 500);
+    }
+  }
+);
+
 tournamentApi.post("/end/:id", async (c) => {
   try {
     const admin = getAdmin(c);
@@ -217,6 +257,34 @@ tournamentApi.get("/participants/:id", async (c) => {
       error instanceof Error
         ? error.message
         : "Failed to retrieve tournament participants";
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
+tournamentApi.post("/delete/:id", async (c) => {
+  try {
+    const admin = getAdmin(c);
+    const id = Number(c.req.param("id"));
+
+    const result = await deleteTournament(admin.id, id);
+
+    return c.json({
+      message: "Tournament deleted successfully",
+      result,
+    });
+  } catch (error: unknown) {
+    console.error("Error deleting tournament:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to delete tournament";
+
+    if (errorMessage.includes("participants")) {
+      return c.json({ error: errorMessage }, 400);
+    }
+
+    if (errorMessage.includes("not found")) {
+      return c.json({ error: errorMessage }, 404);
+    }
+
     return c.json({ error: errorMessage }, 500);
   }
 });
