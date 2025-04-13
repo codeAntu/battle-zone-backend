@@ -5,6 +5,7 @@ import {
   tournamentsTable,
   usersTable,
   winningsTable,
+  historyTable,
 } from "../../drizzle/schema";
 
 const sanitizeTournamentData = (tournamentData: any, hasParticipated: boolean = false, isWinner: boolean = false) => {
@@ -245,6 +246,21 @@ export async function participateInTournament(
         balance: userBalance - tournamentEntryFee,
       })
       .where(and(eq(usersTable.id, userId)))
+      .execute();
+      
+    // Record the tournament entry fee deduction in history
+    await db
+      .insert(historyTable)
+      .values({
+        userId,
+        transactionType: "tournament_entry",
+        amount: tournamentEntryFee,
+        balanceEffect: "decrease",
+        status: "completed",
+        message: `Entry fee paid for tournament: ${tournament[0].name}`,
+        referenceId: tournamentId,
+        createdAt: new Date(),
+      })
       .execute();
 
     const participantInsert = await db

@@ -150,14 +150,49 @@ export const withdrawTable = mysqlTable("withdraw", {
 });
 
 // Withdraw history table with corrected reference type
-// export const withdrawHistoryTable = mysqlTable("withdraw_history", {
-//   id: int("id").primaryKey().autoincrement(),
-//   adminId: int("adminId")
-//     .notNull()
-//     .references(() => adminTable.id),
-//   withdrawId: int("withdrawId")
-//     .notNull()
-//     .references(() => withdrawTable.id),
-//   action: varchar({ length: 255 }).notNull(),
-//   createdAt: timestamp("created_at").notNull().defaultNow(),
-// });
+export const historyTable = mysqlTable("history", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("userId")
+    .notNull()
+    .references(() => usersTable.id),
+  transactionType: mysqlEnum("transactionType", [
+    "deposit", 
+    "withdrawal", 
+    "tournament_entry", 
+    "tournament_winnings",
+    "kill_reward",
+    "balance_adjustment",
+    "deposit_rejected",
+    "withdrawal_rejected"
+  ]).notNull(),
+  amount: int("amount").notNull(),
+  balanceEffect: mysqlEnum("balanceEffect", ["increase", "decrease", "none"]).notNull().default("none"),
+  status: varchar({ length: 255 }).notNull(),
+  message: varchar({ length: 255 }).notNull(),
+  referenceId: int("referenceId"),  // Can store deposit/withdraw/tournament ID
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const rejectedWithdrawTable = mysqlTable("rejected_withdraw", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("userId")
+    .notNull()
+    .references(() => usersTable.id),
+  amount: int("amount").notNull(),
+  upiId: varchar({ length: 255 }).notNull(),
+  status: varchar({ length: 255 }).notNull(),
+  reason: varchar({ length: 255 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const rejectedDepositTable = mysqlTable("rejected_deposit", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("userId")
+    .notNull()
+    .references(() => usersTable.id),
+  amount: int("amount").notNull(),
+  upiId: varchar({ length: 255 }).notNull(),
+  status: varchar({ length: 255 }).notNull(),
+  reason: varchar({ length: 255 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});

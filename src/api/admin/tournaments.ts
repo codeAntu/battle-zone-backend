@@ -16,7 +16,7 @@ import { getAdmin } from "../../utils/context";
 import {
   tournamentsValidation,
   tournamentUpdateValidation,
-  killMoneyValidation, // Add this import
+  killMoneyValidation, 
 } from "../../zod/tournaments";
 
 const tournamentApi = new Hono().basePath("/tournaments");

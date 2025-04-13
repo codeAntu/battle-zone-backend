@@ -5,6 +5,7 @@ import {
   tournamentsTable,
   usersTable,
   winningsTable,
+  historyTable,
 } from "../../drizzle/schema";
 import { TournamentType, TournamentUpdateType } from "../../zod/tournaments";
 
@@ -154,7 +155,7 @@ export async function endTournament(
         and(
           eq(tournamentsTable.adminId, adminId),
           eq(tournamentsTable.id, id),
-          eq(tournamentsTable.isEnded, false) 
+          eq(tournamentsTable.isEnded, false)
         )
       )
       .execute();
@@ -189,6 +190,7 @@ export async function endTournament(
 
     const user = participant[0].user;
     const prizeAmount = tournament[0].prize;
+    const tournamentName = tournament[0].name;
 
     await db
       .insert(winningsTable)
@@ -196,6 +198,21 @@ export async function endTournament(
         userId: userId,
         tournamentId: id,
         amount: prizeAmount,
+      })
+      .execute();
+
+    // Add record to history table
+    await db
+      .insert(historyTable)
+      .values({
+        userId: userId,
+        transactionType: "tournament_winnings",
+        amount: prizeAmount,
+        balanceEffect: "increase",
+        status: "completed",
+        message: `Tournament winnings: ${tournamentName} - Prize: ${prizeAmount}`,
+        referenceId: id,
+        createdAt: new Date(),
       })
       .execute();
 
@@ -324,11 +341,14 @@ export async function awardKillMoney(
       .execute();
 
     if (!tournament.length) {
-      throw new Error(`Tournament with ID ${tournamentId} not found for this admin`);
+      throw new Error(
+        `Tournament with ID ${tournamentId} not found for this admin`
+      );
     }
 
     const perKillPrize = tournament[0].perKillPrize;
     const killReward = perKillPrize * kills;
+    const tournamentName = tournament[0].name;
 
     const participant = await db
       .select({
@@ -362,6 +382,22 @@ export async function awardKillMoney(
         userId: userId,
         tournamentId: tournamentId,
         amount: killReward,
+        type: "kill",
+      })
+      .execute();
+
+    // Add record to history table
+    await db
+      .insert(historyTable)
+      .values({
+        userId: userId,
+        transactionType: "kill_reward",
+        amount: killReward,
+        balanceEffect: "increase",
+        status: "completed",
+        message: `Kill reward: ${kills} kills in ${tournamentName} - Reward: ${killReward}`,
+        referenceId: tournamentId,
+        createdAt: new Date(),
       })
       .execute();
 
@@ -373,11 +409,11 @@ export async function awardKillMoney(
       .where(eq(usersTable.id, userId))
       .execute();
 
-    return { 
+    return {
       userId,
       kills,
       killReward,
-      success: true
+      success: true,
     };
   } catch (error) {
     console.error("Error awarding kill money:", error);

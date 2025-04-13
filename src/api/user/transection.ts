@@ -2,10 +2,11 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import db from "../../config/db";
-import { depositTable, withdrawTable } from "../../drizzle/schema";
+import { depositTable, historyTable, withdrawTable } from "../../drizzle/schema";
 import { findUserById } from "../../helpers/user/user";
 import { isUser } from "../../middleware/auth";
 import { getUser } from "../../utils/context";
+import { eq, desc, and } from "drizzle-orm";
 
 const transaction = new Hono().basePath("/transaction");
 
@@ -108,5 +109,94 @@ transaction.post(
     }
   }
 );
+
+// Get user's complete transaction history
+transaction.get("/history", async (c) => {
+  try {
+    const user = getUser(c);
+    
+    // Get history for the current user
+    const history = await db
+      .select()
+      .from(historyTable)
+      .where(eq(historyTable.userId, user.id))
+      .orderBy(desc(historyTable.createdAt))
+      .execute();
+    
+    return c.json({
+      message: "Transaction history retrieved successfully",
+      history
+    });
+  } catch (error) {
+    console.error("Error fetching transaction history:", error);
+    return c.json(
+      {
+        message: "Failed to retrieve transaction history",
+        error: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
+  }
+});
+
+// Add ability to filter history by transaction type
+transaction.get("/history/:type", async (c) => {
+  try {
+    const user = getUser(c);
+    const typeParam = c.req.param("type");
+    
+    // Define the valid transaction types
+    const validTypes = [
+      "deposit", 
+      "withdrawal", 
+      "tournament_entry", 
+      "tournament_winnings",
+      "kill_reward",
+      "balance_adjustment",
+      "deposit_rejected",
+      "withdrawal_rejected"
+    ] as const;
+    
+    // Type guard to check if the provided type is valid
+    const isValidType = (type: string): type is typeof validTypes[number] => {
+      return validTypes.includes(type as any);
+    };
+    
+    // Check if the provided type is valid
+    if (!isValidType(typeParam)) {
+      return c.json({
+        message: "Invalid transaction type",
+        validTypes
+      }, 400);
+    }
+    
+    // Get filtered history for the current user with properly typed parameter
+    const history = await db
+      .select()
+      .from(historyTable)
+      .where(
+        and(
+          eq(historyTable.userId, user.id),
+          eq(historyTable.transactionType, typeParam)
+        )
+      )
+      .orderBy(desc(historyTable.createdAt))
+      .execute();
+    
+    return c.json({
+      message: `${typeParam} history retrieved successfully`,
+      history
+    });
+  } catch (error) {
+    console.error("Error fetching filtered transaction history:", error);
+    return c.json(
+      {
+        message: "Failed to retrieve filtered transaction history",
+        error: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
+  }
+});
 
 export default transaction;

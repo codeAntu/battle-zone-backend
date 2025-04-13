@@ -14,7 +14,6 @@ import { signupValidator, verifyOtpValidator } from "../../zod/auth";
 
 const adminAuth = new Hono().basePath("/auth");
 
-// Helper function to generate authentication token and format admin data
 function generateAuthResponse(admin: any) {
   const tokenData = {
     id: admin.id,
