@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, desc } from "drizzle-orm";
 import db from "../../config/db";
 import {
   tournamentParticipantsTable,
@@ -42,7 +42,7 @@ export async function getAllUserTournaments(userId: number) {
           gt(tournamentsTable.scheduledAt, new Date())
         )
       )
-      .orderBy(tournamentsTable.scheduledAt)
+      .orderBy(desc(tournamentsTable.scheduledAt))
       .execute();
 
     return tournaments.map(tournament => {
@@ -154,6 +154,7 @@ export async function getUserTournamentsByName(
           gt(tournamentsTable.scheduledAt, new Date())
         )
       )
+      .orderBy(desc(tournamentsTable.scheduledAt))
       .execute();
 
     return tournaments.map(item => ({
@@ -353,7 +354,7 @@ export async function getParticipatedTournaments(userId: number) {
           eq(tournamentsTable.isEnded, false)
         )
       )
-      .orderBy(tournamentsTable.scheduledAt)
+      .orderBy(desc(tournamentsTable.scheduledAt))
       .execute();
 
     return tournaments;
@@ -381,7 +382,7 @@ export async function getUserWinnings(userId: number) {
           eq(tournamentsTable.isEnded, true)
         )
       )
-      .orderBy(tournamentsTable.scheduledAt)
+      .orderBy(desc(tournamentsTable.scheduledAt))
       .execute();
 
     return winnings.map(item => ({

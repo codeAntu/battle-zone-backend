@@ -16,10 +16,8 @@ import { eq, desc } from "drizzle-orm";
 
 const transactionsRouter = new Hono().basePath("/transactions");
 
-// Apply admin authentication to all routes
 transactionsRouter.use("/*", isAdmin);
 
-// Enhanced validation schema for status update with conditional reason
 const statusUpdateValidator = z
   .object({
     status: z.enum(["pending", "approved", "rejected"]),
@@ -27,7 +25,6 @@ const statusUpdateValidator = z
   })
   .refine(
     (data) => {
-      // Require reason if status is "rejected"
       return (
         data.status !== "rejected" ||
         (data.status === "rejected" && data.reason)
@@ -39,7 +36,6 @@ const statusUpdateValidator = z
     }
   );
 
-// GET all deposits
 transactionsRouter.get("/deposits", async (c) => {
   try {
     const admin = getAdmin(c);
@@ -77,7 +73,6 @@ transactionsRouter.get("/deposits", async (c) => {
   }
 });
 
-// GET all withdrawals
 transactionsRouter.get("/withdrawals", async (c) => {
   try {
     const admin = getAdmin(c);
@@ -114,7 +109,6 @@ transactionsRouter.get("/withdrawals", async (c) => {
   }
 });
 
-// Update deposit status
 transactionsRouter.post(
   "/deposit/:id",
   zValidator("json", statusUpdateValidator),
@@ -124,7 +118,6 @@ transactionsRouter.post(
       const id = Number(c.req.param("id"));
       const { status, reason } = await c.req.json();
 
-      // Get the deposit to check if it exists
       const deposit = await db
         .select()
         .from(depositTable)
@@ -137,7 +130,6 @@ transactionsRouter.post(
 
       const userDeposit = deposit[0];
 
-      // Update status
       await db
         .update(depositTable)
         .set({ status })
@@ -237,7 +229,6 @@ transactionsRouter.post(
       const id = Number(c.req.param("id"));
       const { status, reason } = await c.req.json();
 
-      // Get the withdrawal to check if it exists
       const withdrawal = await db
         .select()
         .from(withdrawTable)
@@ -250,21 +241,19 @@ transactionsRouter.post(
 
       const userWithdrawal = withdrawal[0];
 
-      // Update status
       await db
         .update(withdrawTable)
         .set({ status })
         .where(eq(withdrawTable.id, id))
         .execute();
 
-      // Add to history with transactionType and proper balanceEffect
       await db
         .insert(historyTable)
         .values({
           userId: userWithdrawal.userId,
           transactionType: status === "rejected" ? "withdrawal_rejected" : "withdrawal",
           amount: userWithdrawal.amount,
-          balanceEffect: status === "approved" ? "decrease" : "none", // Set proper balance effect
+          balanceEffect: status === "approved" ? "decrease" : "none", 
           status,
           message:
             status === "rejected"
@@ -275,7 +264,6 @@ transactionsRouter.post(
         })
         .execute();
 
-      // If rejected, create entry in rejected_withdraw table
       if (status === "rejected") {
         await db
           .insert(rejectedWithdrawTable)
@@ -290,9 +278,7 @@ transactionsRouter.post(
           .execute();
       }
 
-      // If approved, deduct from user balance
       if (status === "approved") {
-        // Fetch current user balance
         const user = await db
           .select({ balance: usersTable.balance })
           .from(usersTable)
@@ -311,14 +297,13 @@ transactionsRouter.post(
             .where(eq(usersTable.id, userWithdrawal.userId))
             .execute();
 
-          // Add balance update to history with proper balanceEffect
           await db
             .insert(historyTable)
             .values({
               userId: userWithdrawal.userId,
               transactionType: "balance_adjustment",
               amount: userWithdrawal.amount,
-              balanceEffect: "decrease", // Explicitly mark as balance decrease
+              balanceEffect: "decrease", 
               status: "completed",
               message: `Balance updated: -${userWithdrawal.amount} from withdrawal`,
               referenceId: id,

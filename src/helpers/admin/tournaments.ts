@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import db from "../../config/db";
 import {
   tournamentParticipantsTable,
@@ -14,7 +14,6 @@ import {
 } from "../../zod/tournaments";
 import imageUpload from "../../cloudinary/cloudinaryUploadImage";
 
-// Update interface to match Cloudinary's actual response structure
 export type CloudinaryImageResponse = {
   public_id: string;
   version: number;
@@ -31,7 +30,6 @@ export type CloudinaryImageResponse = {
   url: string;
   secure_url: string;
   original_filename: string;
-  // Add a flexible index signature to handle additional properties
   [key: string]: any;
 };
 
@@ -88,8 +86,8 @@ export async function updateTournamentRoomId(
     const result = await db
       .update(tournamentsTable)
       .set({
-        roomId: String(data.roomId), // Convert to string instead of number
-        roomPassword: data.roomPassword || undefined, // Add roomPassword update
+        roomId: String(data.roomId), 
+        roomPassword: data.roomPassword || undefined,
       })
       .where(
         and(eq(tournamentsTable.adminId, adminId), eq(tournamentsTable.id, id))
@@ -101,7 +99,6 @@ export async function updateTournamentRoomId(
       throw new Error(`Tournament with ID ${id} not found for this admin`);
     }
 
-    // Get the updated tournament
     const tournament = await db
       .select()
       .from(tournamentsTable)
@@ -123,7 +120,7 @@ export async function getMyTournaments(adminId: number) {
       .select()
       .from(tournamentsTable)
       .where(eq(tournamentsTable.adminId, adminId))
-      .orderBy(tournamentsTable.scheduledAt)
+      .orderBy(desc(tournamentsTable.scheduledAt))
       .execute();
 
     return tournaments;
@@ -164,7 +161,7 @@ export async function getMyTournamentHistory(adminId: number) {
           eq(tournamentsTable.isEnded, true)
         )
       )
-      .orderBy(tournamentsTable.scheduledAt)
+      .orderBy(desc(tournamentsTable.scheduledAt))
       .execute();
 
     return tournaments;
@@ -241,7 +238,6 @@ export async function endTournament(
       })
       .execute();
 
-    // Add record to history table
     await db
       .insert(historyTable)
       .values({
@@ -256,13 +252,13 @@ export async function endTournament(
       })
       .execute();
 
-    await db
-      .update(usersTable)
-      .set({
-        balance: user.balance + prizeAmount,
-      })
-      .where(eq(usersTable.id, userId))
-      .execute();
+    // await db
+    //   .update(usersTable)
+    //   .set({
+    //     balance: user.balance + prizeAmount,
+    //   })
+    //   .where(eq(usersTable.id, userId))
+    //   .execute();
 
     await db
       .update(tournamentsTable)
@@ -300,7 +296,7 @@ export async function getMyCurrentTournaments(adminId: number) {
           eq(tournamentsTable.isEnded, false)
         )
       )
-      .orderBy(tournamentsTable.scheduledAt)
+      .orderBy(desc(tournamentsTable.scheduledAt))
       .execute();
 
     return tournaments;
@@ -426,7 +422,6 @@ export async function awardKillMoney(
       })
       .execute();
 
-    // Add record to history table
     await db
       .insert(historyTable)
       .values({
@@ -467,7 +462,6 @@ export async function deleteTournament(adminId: number, id: number) {
       throw new Error(`Invalid tournament ID: ${id}`);
     }
 
-    // Check if tournament exists and belongs to the admin
     const tournament = await db
       .select()
       .from(tournamentsTable)
@@ -480,7 +474,6 @@ export async function deleteTournament(adminId: number, id: number) {
       throw new Error(`Tournament with ID ${id} not found for this admin`);
     }
 
-    // Check if tournament has participants
     const participants = await db
       .select()
       .from(tournamentParticipantsTable)
@@ -493,7 +486,6 @@ export async function deleteTournament(adminId: number, id: number) {
       );
     }
 
-    // Delete tournament if no participants
     await db
       .delete(tournamentsTable)
       .where(
@@ -517,8 +509,6 @@ export async function editTournament(
     if (isNaN(id) || id <= 0) {
       throw new Error(`Invalid tournament ID: ${id}`);
     }
-
-    // Check if tournament exists and belongs to the admin
     const tournament = await db
       .select()
       .from(tournamentsTable)
@@ -531,12 +521,10 @@ export async function editTournament(
       throw new Error(`Tournament with ID ${id} not found for this admin`);
     }
 
-    // Check if the tournament has already ended
     if (tournament[0].isEnded) {
       throw new Error(`Cannot edit tournament that has already ended`);
     }
 
-    // Check if participants > new maxParticipants
     if (
       data.maxParticipants &&
       tournament[0].currentParticipants > data.maxParticipants
@@ -545,8 +533,6 @@ export async function editTournament(
         `Cannot reduce max participants below current participant count (${tournament[0].currentParticipants})`
       );
     }
-
-    // Create update object with only the provided fields
     const updateData: any = {};
     if (data.game) updateData.game = data.game;
     if (data.name) updateData.name = data.name;
@@ -562,7 +548,6 @@ export async function editTournament(
     if (data.maxParticipants) updateData.maxParticipants = data.maxParticipants;
     if (data.scheduledAt) updateData.scheduledAt = new Date(data.scheduledAt);
 
-    // Update tournament
     await db
       .update(tournamentsTable)
       .set(updateData)
@@ -571,7 +556,6 @@ export async function editTournament(
       )
       .execute();
 
-    // Get the updated tournament
     const updatedTournament = await db
       .select()
       .from(tournamentsTable)

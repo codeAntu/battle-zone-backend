@@ -104,7 +104,6 @@ tournamentApi.post("/create", async (c) => {
     const admin = getAdmin(c);
     const body = await c.req.parseBody();
     
-    // Pre-process form data for validation
     const processedData = {
       game: body.game,
       name: body.name,
@@ -121,11 +120,9 @@ tournamentApi.post("/create", async (c) => {
     
     console.log("Processing data for validation:", processedData);
     
-    // Validate processed data
     const data = tournamentsValidation.safeParse(processedData);
     if (!data.success) {
       console.error("Validation error:", data.error.format());
-      // Return detailed validation errors
       return c.json({ 
         error: "Invalid tournament data", 
         details: data.error.errors.map(err => ({
@@ -138,7 +135,6 @@ tournamentApi.post("/create", async (c) => {
     const parsedData = data.data;
     console.log("Parsed data:", parsedData);
 
-    // Uncomment these lines to actually create the tournament
     const tournamentId = await createTournament(admin.id, parsedData);
     const tournament = await getMyTournamentById(admin.id, tournamentId);
 
