@@ -238,19 +238,19 @@ export async function endTournament(
       })
       .execute();
 
-    await db
-      .insert(historyTable)
-      .values({
-        userId: userId,
-        transactionType: "tournament_winnings",
-        amount: prizeAmount,
-        balanceEffect: "increase",
-        status: "completed",
-        message: `Tournament winnings: ${tournamentName} - Prize: ${prizeAmount}`,
-        referenceId: id,
-        createdAt: new Date(),
-      })
-      .execute();
+    // await db
+    //   .insert(historyTable)
+    //   .values({
+    //     userId: userId,
+    //     transactionType: "tournament_winnings",
+    //     amount: prizeAmount,
+    //     balanceEffect: "increase",
+    //     status: "completed",
+    //     message: `Tournament winnings: ${tournamentName} - Prize: ${prizeAmount}`,
+    //     referenceId: id,
+    //     createdAt: new Date(),
+    //   })
+    //   .execute();
 
     // await db
     //   .update(usersTable)
