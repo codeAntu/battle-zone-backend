@@ -2,14 +2,19 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import admin from "./api/admin";
 import user from "./api/user";
-import "./types"; // Make sure this import exists
+import "./types"; 
 import game from "./api/games";
 
 const app = new Hono().basePath("/api");
 
-app.use("*", cors({ origin: "*" }));
+app.use("*", cors({
+  origin: ["https://battlezonex.in", "http://localhost:5173"],
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  credentials: true,
+}));
 
-// Use the centralized auth router
+
 app.route("/", admin);
 app.route("/", user);
 app.route("/", game);
