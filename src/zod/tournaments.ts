@@ -1,10 +1,18 @@
 import { z } from "zod";
 
+const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+const imageSchema = z
+  .instanceof(File)
+  .refine((file) => file.size <= maxSizeInBytes, {
+    message: "Image must be less than 5MB",
+  });
+
 export const tournamentsValidation = z
   .object({
     game: z.enum(["BGMI", "FREEFIRE"]),
     name: z.string().min(1).max(50),
     description: z.string().max(255).optional(),
+    image: z.any().optional(), 
     roomId: z
       .string()
       .optional()
@@ -26,7 +34,7 @@ export const tournamentsValidation = z
   .refine(
     (data) => {
       const now = new Date();
-      const tournamentDateTime = new Date(data.scheduledAt);
+      const tournamentDateTime = new Date(data.scheduledAt as string);
       return tournamentDateTime > now;
     },
     {
@@ -89,7 +97,7 @@ export const tournamentEditValidation = z
     (data) => {
       if (!data.scheduledAt) return true;
       const now = new Date();
-      const tournamentDateTime = new Date(data.scheduledAt);
+      const tournamentDateTime = new Date(data.scheduledAt as string);
       return tournamentDateTime > now;
     },
     {

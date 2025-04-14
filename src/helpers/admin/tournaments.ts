@@ -7,16 +7,56 @@ import {
   winningsTable,
   historyTable,
 } from "../../drizzle/schema";
-import { TournamentType, TournamentUpdateType, TournamentEditType } from "../../zod/tournaments";
+import {
+  TournamentType,
+  TournamentUpdateType,
+  TournamentEditType,
+} from "../../zod/tournaments";
+import imageUpload from "../../cloudinary/cloudinaryUploadImage";
+
+// Update interface to match Cloudinary's actual response structure
+export type CloudinaryImageResponse = {
+  public_id: string;
+  version: number;
+  signature: string;
+  width: number;
+  height: number;
+  format: string;
+  resource_type: string;
+  created_at: string;
+  tags?: string[];
+  bytes: number;
+  type: string;
+  etag: string;
+  url: string;
+  secure_url: string;
+  original_filename: string;
+  // Add a flexible index signature to handle additional properties
+  [key: string]: any;
+};
 
 export async function createTournament(adminId: number, data: TournamentType) {
   try {
+    let imageUrl = "";
+
+    console.log("data", data);
+
+    if (data.image) {
+      const result = (await imageUpload(data.image)) as unknown as CloudinaryImageResponse;
+      if (result && result.secure_url) {
+        imageUrl = result.secure_url;
+      } else {
+        throw new Error("Image upload failed");
+      }
+    }
+
     const result = await db
       .insert(tournamentsTable)
       .values({
         adminId: adminId,
         game: data.game,
         name: data.name,
+        image: imageUrl,
         description: data.description || null,
         roomId: String(data.roomId),
         roomPassword: data.roomPassword || null,
@@ -448,7 +488,9 @@ export async function deleteTournament(adminId: number, id: number) {
       .execute();
 
     if (participants && participants.length > 0) {
-      throw new Error(`Cannot delete tournament with ${participants.length} participants`);
+      throw new Error(
+        `Cannot delete tournament with ${participants.length} participants`
+      );
     }
 
     // Delete tournament if no participants
@@ -495,20 +537,28 @@ export async function editTournament(
     }
 
     // Check if participants > new maxParticipants
-    if (data.maxParticipants && tournament[0].currentParticipants > data.maxParticipants) {
-      throw new Error(`Cannot reduce max participants below current participant count (${tournament[0].currentParticipants})`);
+    if (
+      data.maxParticipants &&
+      tournament[0].currentParticipants > data.maxParticipants
+    ) {
+      throw new Error(
+        `Cannot reduce max participants below current participant count (${tournament[0].currentParticipants})`
+      );
     }
 
     // Create update object with only the provided fields
     const updateData: any = {};
     if (data.game) updateData.game = data.game;
     if (data.name) updateData.name = data.name;
-    if (data.description !== undefined) updateData.description = data.description;
+    if (data.description !== undefined)
+      updateData.description = data.description;
     if (data.roomId) updateData.roomId = String(data.roomId);
-    if (data.roomPassword !== undefined) updateData.roomPassword = data.roomPassword;
+    if (data.roomPassword !== undefined)
+      updateData.roomPassword = data.roomPassword;
     if (data.entryFee !== undefined) updateData.entryFee = data.entryFee;
     if (data.prize !== undefined) updateData.prize = data.prize;
-    if (data.perKillPrize !== undefined) updateData.perKillPrize = data.perKillPrize;
+    if (data.perKillPrize !== undefined)
+      updateData.perKillPrize = data.perKillPrize;
     if (data.maxParticipants) updateData.maxParticipants = data.maxParticipants;
     if (data.scheduledAt) updateData.scheduledAt = new Date(data.scheduledAt);
 

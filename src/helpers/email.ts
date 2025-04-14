@@ -70,12 +70,12 @@ export async function sendVerificationEmail(
     `Sending verification email to ${to} with code ${verificationCode}`
   );
 
-  // const name = to.split("@")[0]; // Extract name from email address
-  // const html = generateVerificationEmailHtml(name, verificationCode);
+  const name = to.split("@")[0]; // Extract name from email address
+  const html = generateVerificationEmailHtml(name, verificationCode);
 
-  // return await sendEmail({
-  //   to,
-  //   subject: "Verify Your BattleZone Account",
-  //   html,
-  // });
+  return await sendEmail({
+    to,
+    subject: "Verify Your BattleZone Account",
+    html,
+  });
 }

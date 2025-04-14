@@ -63,6 +63,7 @@ export const tournamentsTable = mysqlTable(
       .references(() => adminTable.id),
     game: varchar({ length: 255 }),
     name: varchar({ length: 255 }).notNull(),
+    image: varchar({ length: 255 }),
     description: varchar({ length: 255 }),
     roomId: varchar({ length: 255 }).default("0"),
     roomPassword: varchar({ length: 255 }),
@@ -102,9 +103,9 @@ export const tournamentParticipantsTable = mysqlTable(
     tournamentId: int("tournamentId")
       .notNull()
       .references(() => tournamentsTable.id),
-    playerUsername: varchar({ length: 255 }).notNull(), // Game username
-    playerUserId: varchar({ length: 255 }).notNull(), // Game user ID
-    playerLevel: int("playerLevel").notNull(), // Add player level
+    playerUsername: varchar({ length: 255 }).notNull(), 
+    playerUserId: varchar({ length: 255 }).notNull(), 
+    playerLevel: int("playerLevel").notNull(), 
     joinedAt: timestamp("joined_at").notNull().defaultNow(),
   }
 );

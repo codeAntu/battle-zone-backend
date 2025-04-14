@@ -99,32 +99,60 @@ tournamentApi.get("/:id", async (c) => {
   }
 });
 
-tournamentApi.post(
-  "/create",
-  zValidator("json", tournamentsValidation),
-  async (c) => {
-    try {
-      const data = await c.req.json();
-      const admin = getAdmin(c);
-
-      console.log("data", data);
-
-      const tournamentId = await createTournament(admin.id, data);
-
-      const tournament = await getMyTournamentById(admin.id, tournamentId);
-
-      return c.json({
-        message: "Tournament created successfully",
-        tournament,
-      });
-    } catch (error: unknown) {
-      console.error("Error creating tournament:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to create tournament";
-      return c.json({ error: errorMessage }, 500);
+tournamentApi.post("/create", async (c) => {
+  try {
+    const admin = getAdmin(c);
+    const body = await c.req.parseBody();
+    
+    // Pre-process form data for validation
+    const processedData = {
+      game: body.game,
+      name: body.name,
+      description: body.description,
+      image: body.image,
+      roomId: body.roomId || "0",
+      roomPassword: body.roomPassword,
+      entryFee: Number(body.entryFee),
+      prize: Number(body.prize),
+      perKillPrize: Number(body.perKillPrize),
+      maxParticipants: Number(body.maxParticipants),
+      scheduledAt: body.scheduledAt,
+    };
+    
+    console.log("Processing data for validation:", processedData);
+    
+    // Validate processed data
+    const data = tournamentsValidation.safeParse(processedData);
+    if (!data.success) {
+      console.error("Validation error:", data.error.format());
+      // Return detailed validation errors
+      return c.json({ 
+        error: "Invalid tournament data", 
+        details: data.error.errors.map(err => ({
+          path: err.path.join('.'),
+          message: err.message
+        }))
+      }, 400);
     }
+    
+    const parsedData = data.data;
+    console.log("Parsed data:", parsedData);
+
+    // Uncomment these lines to actually create the tournament
+    const tournamentId = await createTournament(admin.id, parsedData);
+    const tournament = await getMyTournamentById(admin.id, tournamentId);
+
+    return c.json({
+      message: "Tournament created successfully",
+      tournament,
+    });
+  } catch (error: unknown) {
+    console.error("Error creating tournament:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to create tournament";
+    return c.json({ error: errorMessage }, 500);
   }
-);
+});
 
 tournamentApi.post(
   "/update/:id",
