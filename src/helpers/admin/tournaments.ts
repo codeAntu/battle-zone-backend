@@ -40,7 +40,9 @@ export async function createTournament(adminId: number, data: TournamentType) {
     console.log("data", data);
 
     if (data.image) {
-      const result = (await imageUpload(data.image)) as unknown as CloudinaryImageResponse;
+      const result = (await imageUpload(
+        data.image
+      )) as unknown as CloudinaryImageResponse;
       if (result && result.secure_url) {
         imageUrl = result.secure_url;
       } else {
@@ -86,7 +88,7 @@ export async function updateTournamentRoomId(
     const result = await db
       .update(tournamentsTable)
       .set({
-        roomId: String(data.roomId), 
+        roomId: String(data.roomId),
         roomPassword: data.roomPassword || undefined,
       })
       .where(
@@ -225,40 +227,54 @@ export async function endTournament(
       );
     }
 
-    const user = participant[0].user;
-    const prizeAmount = tournament[0].prize;
-    const tournamentName = tournament[0].name;
-
-    await db
-      .insert(winningsTable)
-      .values({
-        userId: userId,
-        tournamentId: id,
-        amount: prizeAmount,
-      })
-      .execute();
+    // const user = participant[0].user;
+    // const prizeAmount = tournament[0].prize;
+    // const tournamentName = tournament[0].name;
 
     // await db
-    //   .insert(historyTable)
+    //   .insert(winningsTable)
     //   .values({
     //     userId: userId,
-    //     transactionType: "tournament_winnings",
+    //     tournamentId: id,
     //     amount: prizeAmount,
-    //     balanceEffect: "increase",
-    //     status: "completed",
-    //     message: `Tournament winnings: ${tournamentName} - Prize: ${prizeAmount}`,
-    //     referenceId: id,
-    //     createdAt: new Date(),
     //   })
     //   .execute();
 
-    // await db
-    //   .update(usersTable)
-    //   .set({
-    //     balance: user.balance + prizeAmount,
-    //   })
-    //   .where(eq(usersTable.id, userId))
-    //   .execute();
+    // Check if the user has a kill reward in winningsTable
+    const existingKillReward = await db
+      .select()
+      .from(winningsTable)
+      .where(
+        and(
+          eq(winningsTable.tournamentId, id),
+          eq(winningsTable.userId, userId),
+          eq(winningsTable.type, "kill")
+        )
+      )
+      .execute();
+
+    if (existingKillReward.length > 0) {
+      const killRewardEntry = existingKillReward[0];
+      // Update the type to "winnings" in winningsTable
+      await db
+        .update(winningsTable)
+        .set({ type: "winnings" })
+        .where(eq(winningsTable.id, killRewardEntry.id))
+        .execute();
+
+      // Update the transactionType to "tournament_winnings" in historyTable
+      await db
+        .update(historyTable)
+        .set({ transactionType: "tournament_winnings" })
+        .where(
+          and(
+            eq(historyTable.referenceId, id),
+            eq(historyTable.userId, userId),
+            eq(historyTable.transactionType, "kill_reward")
+          )
+        )
+        .execute();
+    }
 
     await db
       .update(tournamentsTable)
@@ -382,6 +398,13 @@ export async function awardKillMoney(
       );
     }
 
+    // Check if the tournament has ended
+    if (tournament[0].isEnded) {
+      throw new Error(
+        `Cannot add kill reward. Tournament with ID ${tournamentId} has already ended.`
+      );
+    }
+
     const perKillPrize = tournament[0].perKillPrize;
     const killReward = perKillPrize * kills;
     const tournamentName = tournament[0].name;
@@ -412,6 +435,26 @@ export async function awardKillMoney(
 
     const user = participant[0].user;
 
+    // Check if an entry already exists in winningsTable with type "kill"
+    const existingKillReward = await db
+      .select()
+      .from(winningsTable)
+      .where(
+        and(
+          eq(winningsTable.tournamentId, tournamentId),
+          eq(winningsTable.userId, userId),
+          eq(winningsTable.type, "kill")
+        )
+      )
+      .execute();
+
+    if (existingKillReward.length > 0) {
+      throw new Error(
+        `Kill reward already exists for user ID ${userId} in tournament ID ${tournamentId}.`
+      );
+    }
+
+    // Add new kill reward to winningsTable
     await db
       .insert(winningsTable)
       .values({

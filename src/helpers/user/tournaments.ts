@@ -382,7 +382,7 @@ export async function getUserWinnings(userId: number) {
           eq(tournamentsTable.isEnded, true)
         )
       )
-      .orderBy(desc(tournamentsTable.scheduledAt))
+      .orderBy(desc(winningsTable.createdAt)) // Order by winningsTable.createdAt
       .execute();
 
     return winnings.map(item => ({
