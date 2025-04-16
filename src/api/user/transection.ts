@@ -10,14 +10,16 @@ import { eq, desc, and } from "drizzle-orm";
 
 const transaction = new Hono().basePath("/transaction");
 
+// Updated depositValidator to enforce a minimum deposit amount of 10
 const depositValidator = z.object({
-  amount: z.number().positive("Amount must be positive"),
+  amount: z.number().min(10, "Minimum deposit amount is 10").positive("Amount must be positive"),
   transactionId: z.number().positive("Transaction ID is required"),
   upiId: z.string().min(1, "UPI ID is required"),
 });
 
+// Updated withdrawValidator to enforce a minimum withdrawal amount of 100
 const withdrawValidator = z.object({
-  amount: z.number().positive("Amount must be positive"),
+  amount: z.number().min(100, "Minimum withdrawal amount is 100").positive("Amount must be positive"),
   upiId: z.string().min(1, "UPI ID is required"),
 });
 
