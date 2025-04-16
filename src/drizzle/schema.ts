@@ -1,15 +1,17 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   check,
   datetime,
   int,
+  mysqlEnum,
   mysqlTable,
   timestamp,
   varchar,
-  mysqlEnum,
 } from "drizzle-orm/mysql-core";
-import transaction from "../api/user/transection";
+
+const bigintUnsigned = bigint({ mode: 'number', unsigned: true });
 
 // Users table with constraint
 export const usersTable = mysqlTable(
@@ -131,7 +133,7 @@ export const depositTable = mysqlTable("deposit", {
     .references(() => usersTable.id),
   amount: int("amount").notNull(),
   status: varchar({ length: 255 }).notNull(),
-  transactionId: int("transactionId").notNull(),
+  transactionId: bigintUnsigned.notNull(), 
   upiId: varchar({ length: 255 }).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
