@@ -475,7 +475,6 @@ export async function awardKillMoney(
         status: "completed",
         message: `Kill reward: ${kills} kills in ${tournamentName} - Reward: ${killReward}`,
         referenceId: tournamentId,
-        createdAt: new Date(),
       })
       .execute();
 

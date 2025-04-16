@@ -149,7 +149,6 @@ transactionsRouter.post(
               ? `Deposit ${status} by admin - Reason: ${reason}`
               : `Deposit ${status} by admin - ID: ${id}`,
           referenceId: id,
-          createdAt: new Date(),
         })
         .execute();
 
@@ -162,7 +161,6 @@ transactionsRouter.post(
             upiId: userDeposit.upiId,
             status: "rejected",
             reason: reason || "No reason provided",
-            createdAt: new Date(),
           })
           .execute();
       }
@@ -192,7 +190,6 @@ transactionsRouter.post(
               status: "completed",
               message: `Balance updated: +${userDeposit.amount} from deposit`,
               referenceId: id,
-              createdAt: new Date(),
             })
             .execute();
         }
@@ -260,7 +257,6 @@ transactionsRouter.post(
               ? `Withdrawal ${status} by admin - Reason: ${reason}`
               : `Withdrawal ${status} by admin - ID: ${id}`,
           referenceId: id,
-          createdAt: new Date(),
         })
         .execute();
 
@@ -273,7 +269,6 @@ transactionsRouter.post(
             upiId: userWithdrawal.upiId,
             status: "rejected",
             reason: reason || "No reason provided",
-            createdAt: new Date(),
           })
           .execute();
       }
@@ -307,7 +302,6 @@ transactionsRouter.post(
               status: "completed",
               message: `Balance updated: -${userWithdrawal.amount} from withdrawal`,
               referenceId: id,
-              createdAt: new Date(),
             })
             .execute();
         }

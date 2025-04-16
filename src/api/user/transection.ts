@@ -46,7 +46,6 @@ transaction.post(
           transactionId,
           upiId,
           status: "pending",
-          createdAt: new Date(),
         })
         .execute();
 
@@ -91,7 +90,6 @@ transaction.post(
           amount,
           upiId,
           status: "pending",
-          createdAt: new Date(),
         })
         .execute();
 

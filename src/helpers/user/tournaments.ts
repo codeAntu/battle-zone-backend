@@ -260,7 +260,6 @@ export async function participateInTournament(
         status: "completed",
         message: `Entry fee paid for tournament: ${tournament[0].name}`,
         referenceId: tournamentId,
-        createdAt: new Date(),
       })
       .execute();
 
